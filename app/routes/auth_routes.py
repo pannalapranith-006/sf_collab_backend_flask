@@ -237,6 +237,8 @@ def register():
         response = jsonify({
             "success": True,
             "message": "Registration successful",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "user": get_user_response_data(user)
         })
         
@@ -312,11 +314,13 @@ def login():
         print(f"DEBUG: User response data prepared")
         
         response = jsonify({
-        "success": True,
-        "message": "Login successful",
-        "user": user_response
-    })
-    
+            "success": True,
+            "message": "Login successful",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": user_response
+        })
+
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
 
