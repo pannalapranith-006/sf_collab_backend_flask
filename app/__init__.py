@@ -18,7 +18,7 @@ from app.services.email_service import EmailService
 from flask_session import Session
 import stripe
 from app.services.ai_news.scheduler import start_scheduler
-
+from app.routes.analytics import analytics_bp
 WEBHOOK_SECRET = b'sFcollab_2025_secretKey!'
 
 # Suppress warnings first
@@ -137,7 +137,7 @@ def create_app(config_name=None):
     """Create and configure Flask application"""
 
     app = Flask(__name__, instance_relative_config=True)
-    
+    app.register_blueprint(analytics_bp)
     # REMOVED BROKEN PREFLIGHT HANDLER - Flask-CORS handles this automatically
     
     config_class = get_config(config_name)
@@ -412,3 +412,4 @@ def create_app(config_name=None):
         return '', 200
 
     return app
+

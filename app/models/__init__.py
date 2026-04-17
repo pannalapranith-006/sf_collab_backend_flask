@@ -65,3 +65,4 @@ from .EscrowTransaction import EscrowTransaction
 
 # Economy Layer 3: Crystals (visibility acceleration only — NOT money)
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
+from .analytics import AnalyticsSnapshot
