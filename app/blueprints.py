@@ -54,7 +54,6 @@ from .routes import (
     waitlist_routes,
     feedback_routes,
     # scraper_routes,
-    chat_routes,
     user_roles_routes,
     application_routes,
     contribution_ideas_routes,
@@ -81,7 +80,9 @@ from .routes import (
     readiness_routes,
     balance_routes,
     crystal_routes,
+    activation_routes,
     mentorship_routes,
+    
 )
 
 
@@ -155,9 +156,10 @@ blueprints = [
 {"blueprint": matchmaking_routes.matchmaking_bp, "url_prefix": "/api/matchmaking"},
 {"blueprint": collaboration_routes.collab_bp, "url_prefix": "/api/collaboration"},
 { "blueprint": marketplace_routes.marketplace_bp, "url_prefix": '/api/marketplace'},
-# { "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
+#{ "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
+{ "blueprint": activation_routes.activation_bp, "url_prefix": '/api/activation' },
 { "blueprint": mentorship_routes.mentorship_bp, "url_prefix": '/api/mentorship' },
 ]

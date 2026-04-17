@@ -2,7 +2,7 @@ def generate_match_explanation(builder_profile, vision):
     reasons = []
 
     # Skill match
-    if builder_profile.skills and vision.roles_needed:
+    if builder_profile.skill_tags and vision.roles_needed:
         reasons.append("Strong skill alignment with required roles")
 
     # Sector match

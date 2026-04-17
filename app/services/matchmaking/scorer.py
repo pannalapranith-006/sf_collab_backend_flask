@@ -4,7 +4,7 @@ def calculate_match_score(builder_profile, vision):
     # -------------------------
     # 1. Skill Overlap (40%)
     # -------------------------
-    skill_score = calculate_skill_overlap(builder_profile.skills, vision.roles_needed)
+    skill_score = calculate_skill_overlap(builder_profile.skill_tags, vision.roles_needed)
     score += skill_score * 0.4
 
     # -------------------------
