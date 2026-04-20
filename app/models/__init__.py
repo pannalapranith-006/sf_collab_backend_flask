@@ -53,6 +53,8 @@ from .product_purchase import ProductPurchase
 from .user_inventory import UserInventory
 from .EventTokenBalance import EventTokenBalance
 from .aiNews import AINewsArticle
+from .vision import Vision
+from .collaboration_request import CollaborationRequest
 from .ideaCollabRequest import IdeaCollabRequest
 from .startup_rating import StartupRating
 from .marketplace_category import MarketplaceCategory
@@ -65,3 +67,6 @@ from .EscrowTransaction import EscrowTransaction
 
 # Economy Layer 3: Crystals (visibility acceleration only — NOT money)
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
+
+from .marketplace_purchase import MarketplacePurchase
+from .mentor import MentorProfile, MentorSession, MentorshipRequest

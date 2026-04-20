@@ -214,7 +214,16 @@ def update_idea(idea_id):
             idea.tags = data['tags']
         
         db.session.commit()
-        
+
+        # ── Recalculate readiness score when vision fields change ──────────
+        vision_fields = {'title', 'description', 'problem_statement', 'outcome_goal',
+                         'roadmap_items', 'required_roles', 'tags', 'stage'}
+        if any(f in data for f in vision_fields):
+            try:
+                idea.compute_readiness_score()
+            except Exception as e:
+                print(f"⚠️ Readiness recalculation failed: {e}")
+
         # ════════════════════════════════════════════════════════════
         # ✨ NOTIFICATION: Idea Status Changed (4.3)
         # ════════════════════════════════════════════════════════════
@@ -367,7 +376,13 @@ def add_team_member(idea_id):
             position=data['position'],
             skills=data.get('skills')
         )
-        
+
+        # ── Recalculate readiness — new collaborator joined ────────────────
+        try:
+            idea.compute_readiness_score()
+        except Exception as e:
+            print(f"⚠️ Readiness recalculation failed: {e}")
+
         return success_response({
             'team_member': {
                 'name': member.name,
@@ -560,6 +575,12 @@ def approve_collab_request(request_id):
                 skills=None
             )
         db.session.commit()
+
+        # ── Recalculate readiness score — collaborator joined ──────────────
+        try:
+            idea.compute_readiness_score()
+        except Exception as e:
+            print(f"⚠️ Readiness recalculation failed: {e}")
 
         try:
             from app.notifications.helpers import notify_info

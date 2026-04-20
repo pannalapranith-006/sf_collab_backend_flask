@@ -49,9 +49,18 @@ class EmailService:
         server.login(self.username, self.password)
         return server
   def send_email(self, recipient, subject, body, attachments=None):
+    is_staging = os.getenv('FLASK_ENV', 'development') != 'production'
+    
+    if is_staging:
+        if not subject.startswith('[STAGING]'):
+            subject = f"[STAGING] {subject}"
+        from_name = "SFCollab (Staging)"
+    else:
+        from_name = "SFCollab"
+
     server = self._connect()
     try:
-      from_addr = self.default_sender
+      from_addr = f"{from_name} <{self.default_sender}>"
       to_addr = recipient
       msg = MIMEMultipart("related")
       msg["From"] = from_addr

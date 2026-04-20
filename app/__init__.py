@@ -147,6 +147,13 @@ def create_app(config_name=None):
     
     # JWT Configuration
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY") or app.config.get("SECRET_KEY")
+    app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]   # ← CHANGED
+    app.config["JWT_COOKIE_SECURE"] = False                      # ← CHANGED (localhost)
+    app.config["JWT_COOKIE_SAMESITE"] = "Lax"                   # ← CHANGED (localhost)
+    app.config["JWT_COOKIE_CSRF_PROTECT"] = False                # ← CHANGED (no CSRF for header auth)
+    app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
+    app.config["JWT_REFRESH_COOKIE_PATH"] = "/api/auth/refresh"
+    app.config["JWT_COOKIE_DOMAIN"] = None                       # ← CHANGED (localhost)
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
     app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
@@ -167,7 +174,6 @@ def create_app(config_name=None):
         app.config["JWT_COOKIE_SAMESITE"] = "Lax"
         app.config["JWT_COOKIE_CSRF_PROTECT"] = False
         app.config["JWT_COOKIE_DOMAIN"] = None
-
 
 
     
@@ -231,23 +237,24 @@ def create_app(config_name=None):
         app,
         resources={r"/*": {"origins": allowed_origins}},
         supports_credentials=True,
-        allow_headers=[
-            "Content-Type",
-            "Authorization",
-            "X-Requested-With",
-            "X-CSRF-TOKEN",
-        ],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     )
 
     @app.after_request
     def handle_cors(response):
+
         request_origin = request.headers.get("Origin")
         if request_origin and request_origin in allowed_origins:
             response.headers["Access-Control-Allow-Origin"] = request_origin
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Credentials"] = "true"
+
+        response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+
         return response
 
     @app.route('/<path:path>', methods=['OPTIONS'])
@@ -410,5 +417,6 @@ def create_app(config_name=None):
     
         print(event, payload)
         return '', 200
+    
 
     return app
