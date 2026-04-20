@@ -28,7 +28,6 @@ def upgrade():
     if 'achievements' in existing_tables:
         required_baseline_tables = {
             'users',
-            'workspaces',
             'posts',
             'startups',
             'ideas',
