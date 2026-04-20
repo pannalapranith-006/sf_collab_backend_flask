@@ -5,10 +5,12 @@ import pytest
 import os
 from app import create_app
 from app.extensions import db as _db
+import app.models  # noqa: F401
 from app.models.user import User
 from app.models.post import Post
 from flask_jwt_extended import create_access_token
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy import MetaData
 
 
 @pytest.fixture(scope='session')
@@ -33,9 +35,14 @@ def _db_setup(app):
     """
     Create database tables once per test session.
     """
+    # Ensure model metadata is fully populated before create/drop operations.
+    # This allows SQLAlchemy to order drops correctly with FK dependencies.
     _db.create_all()
     yield _db
-    _db.drop_all()
+    _db.session.remove()
+    reflected_metadata = MetaData()
+    reflected_metadata.reflect(bind=_db.engine)
+    reflected_metadata.drop_all(bind=_db.engine)
 
 
 @pytest.fixture(scope='function')

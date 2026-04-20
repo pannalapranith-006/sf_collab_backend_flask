@@ -2,7 +2,7 @@
 # models/attendance.py
 # ============================================================
 from datetime import datetime, date, time
-from extensions import db
+from app.extensions import db
 
 
 class Attendance(db.Model):

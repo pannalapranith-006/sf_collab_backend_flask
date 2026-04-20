@@ -9,14 +9,14 @@ import logging
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
-from models.analytics import AnalyticsSnapshot
-from services.analytics_service import AnalyticsService
-from utils.auth import admin_required, get_jwt_claims
-from utils.csv_utils import to_csv_response
-from utils.date_utils import period_to_dates, resolve_dates
+from app.models.analytics import AnalyticsSnapshot
+from app.services.analytics_service import AnalyticsService
+from app.utils.auth import admin_required, get_jwt_claims
+from app.utils.csv_utils import to_csv_response
+from app.utils.date_utils import period_to_dates, resolve_dates
 
-from extensions import db
-from models.user import User
+from app.extensions import db
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 

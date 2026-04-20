@@ -10,15 +10,15 @@ from typing import Optional
 
 from sqlalchemy import case, func
 
-from extensions import db
-from models.alert import Alert
-from models.attendance import Attendance
-from models.daily_update import DailyUpdate
-from models.holiday import Holiday
-from models.task import Task
-from models.user import User
-from models.analytics import AnalyticsSnapshot
-from utils.date_utils import period_to_dates, previous_period
+from app.extensions import db
+from app.models.alert import Alert
+from app.models.attendance import Attendance
+from app.models.daily_update import DailyUpdate
+from app.models.holiday import Holiday
+from app.models.task import Task
+from app.models.user import User
+from app.models.analytics import AnalyticsSnapshot
+from app.utils.date_utils import period_to_dates, previous_period
 
 logger = logging.getLogger(__name__)
 
