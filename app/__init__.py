@@ -65,6 +65,7 @@ SCHEMA_MIGRATIONS = [
     ("ideas", "required_roles",      "JSON"),
     ("ideas", "roadmap_items",       "JSON"),
 
+
     # users table — fixes missing columns needed by auth/profile flows
     ("users", "last_seen",                    "DATETIME"),
     ("users", "last_login_ip",                "VARCHAR(45)"),
@@ -77,6 +78,10 @@ SCHEMA_MIGRATIONS = [
     ("users", "tasks_completed",              "INTEGER DEFAULT 0"),
     ("users", "tasks_on_time",                "INTEGER DEFAULT 0"),
     ("users", "collaborations_count",         "INTEGER DEFAULT 0"),
+=======
+    
+    ("ideas", "activated_as_startup_id", "INTEGER"),
+
 ]
 
 
@@ -175,7 +180,6 @@ def create_app(config_name=None):
         app.config["JWT_COOKIE_CSRF_PROTECT"] = False
         app.config["JWT_COOKIE_DOMAIN"] = None
 
-
     
     # Session configuration
     print(f"SESSION_TYPE from config: {app.config.get('SESSION_TYPE')}")
@@ -231,11 +235,25 @@ def create_app(config_name=None):
     app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
+
     print("Initializing CORS with origins:", app.config.get('CORS_ORIGINS', []))
     allowed_origins = app.config.get('CORS_ORIGINS', [])
     CORS(
         app,
         resources={r"/*": {"origins": allowed_origins}},
+=======
+    allowed_origins = [
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173",
+        "https://staging.sfcollab.com",
+        "https://sfcollab.com",
+        "https://sfclb.netlify.app"
+    ]
+
+    print(f"🚀 CORS ACTIVE FOR: {allowed_origins}")
+
+    CORS(app, resources={r"/*": {"origins": allowed_origins}}, 
+
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
@@ -243,6 +261,7 @@ def create_app(config_name=None):
 
     @app.after_request
     def handle_cors(response):
+
 
         request_origin = request.headers.get("Origin")
         if request_origin and request_origin in allowed_origins:
@@ -254,6 +273,16 @@ def create_app(config_name=None):
         response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+
+=======
+
+        response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+=======
+        # We let the CORS(app) block above handle the headers dynamically.
+        # This keeps the function but removes the hardcoded 'staging' override.
 
         return response
 
@@ -418,6 +447,11 @@ def create_app(config_name=None):
         print(event, payload)
         return '', 200
     
+
+
+    return app
+
+=======
 
     return app
 
