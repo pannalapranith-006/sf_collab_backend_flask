@@ -78,7 +78,7 @@ SCHEMA_MIGRATIONS = [
     ("users", "tasks_completed",              "INTEGER DEFAULT 0"),
     ("users", "tasks_on_time",                "INTEGER DEFAULT 0"),
     ("users", "collaborations_count",         "INTEGER DEFAULT 0"),
-=======
+
     
     ("ideas", "activated_as_startup_id", "INTEGER"),
 
@@ -241,7 +241,6 @@ def create_app(config_name=None):
     CORS(
         app,
         resources={r"/*": {"origins": allowed_origins}},
-=======
     allowed_origins = [
         "http://localhost:5173", 
         "http://127.0.0.1:5173",
@@ -274,16 +273,16 @@ def create_app(config_name=None):
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 
-=======
 
         response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Credentials"] = "true"
-=======
         # We let the CORS(app) block above handle the headers dynamically.
         # This keeps the function but removes the hardcoded 'staging' override.
 
+        # We let the CORS(app) block above handle the headers dynamically.
+        # This keeps the function but removes the hardcoded staging override.
         return response
 
     @app.route('/<path:path>', methods=['OPTIONS'])
@@ -451,7 +450,6 @@ def create_app(config_name=None):
 
     return app
 
-=======
 
     return app
 
