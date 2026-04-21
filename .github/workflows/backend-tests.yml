@@ -1,0 +1,34 @@
+name: Backend Regression Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: |
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          fi
+
+      - name: Build backend image
+        run: docker compose build backend
+
+      - name: Run backend regression suites
+        run: |
+          docker compose run --rm backend pytest -o addopts='' \
+            tests/integration/test_runtime_stability.py \
+            tests/integration/test_auth_flows.py -q
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

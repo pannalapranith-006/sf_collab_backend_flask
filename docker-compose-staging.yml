@@ -1,20 +1,26 @@
-version: "3.8"
-
 services:
   api-staging:
-    image: sfcollab-api-new:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sf_collab_backend_flask-staging:latest
     container_name: sfcollab-api-staging
     ports:
       - "5001:5000"
     env_file:
       - /home/ubuntu/.env.staging
     depends_on:
-      - db-staging
-      - redis-staging
-    command: >
-      gunicorn run:app
-      -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker
-      -b 0.0.0.0:5000
+      db-staging:
+        condition: service_healthy
+      redis-staging:
+        condition: service_healthy
+    command: ["/bin/bash", "/app/docker/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     restart: unless-stopped
 
   db-staging:
@@ -24,13 +30,23 @@ services:
       - /home/ubuntu/.env.staging
     volumes:
       - mysqldata_staging:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 25s
     restart: unless-stopped
 
   redis-staging:
     image: redis:7
     container_name: sfcollab-redis-staging
-    ports:
-      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
     restart: unless-stopped
 
 volumes:
