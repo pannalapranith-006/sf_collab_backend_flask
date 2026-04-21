@@ -220,15 +220,8 @@ def create_app(config_name=None):
 
     @app.after_request
     def handle_cors(response):
-<<<<<<< HEAD
-        response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-=======
         # We let the CORS(app) block above handle the headers dynamically.
-        # This keeps the function but removes the hardcoded 'staging' override.
->>>>>>> d9826f0 (vision and market place)
+        # This keeps the function but removes the hardcoded staging override.
         return response
 
     @app.route('/<path:path>', methods=['OPTIONS'])
