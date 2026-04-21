@@ -37,7 +37,6 @@ from .planVersion import PlanVersion
 from .businessPlan import BusinessPlan
 from .planSection import PlanSection
 
-
 from .builder import BuilderProfile, BuilderSkill, BuilderPortfolio, BuilderApplication, SavedStartup, ApplicationStatus
 from .outreach_email_account import OutreachEmailAccount
 from .outreach_campaign import OutreachCampaign
@@ -45,7 +44,6 @@ from .outreach_contact import OutreachContact
 from .outreach_sendjobs import OutreachSendJob
 from .outreach_draft import OutreachDraft
 from .pitch_deck import PitchDeck
-# from .wallet import UserWallet, WalletTransaction, ExchangeRate
 from .UserWallet import UserWallet
 from .WalletTransaction import WalletTransaction
 from .virtual_product import VirtualProduct
@@ -53,16 +51,28 @@ from .product_purchase import ProductPurchase
 from .user_inventory import UserInventory
 from .EventTokenBalance import EventTokenBalance
 from .aiNews import AINewsArticle
+from .vision import Vision
+from .collaboration_request import CollaborationRequest
 from .ideaCollabRequest import IdeaCollabRequest
 from .startup_rating import StartupRating
 from .marketplace_category import MarketplaceCategory
 from .marketplace_listing import MarketplaceListing
 from .marketplace_seller import Seller
 
-# Economy Layer 2: Real-money Balance + Escrow
+# Economy Layer 2
 from .Balance import Balance, BalanceTransaction
 from .EscrowTransaction import EscrowTransaction
 
-# Economy Layer 3: Crystals (visibility acceleration only — NOT money)
+# Economy Layer 3
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
+
+from .marketplace_purchase import MarketplacePurchase
+from .mentor import MentorProfile, MentorSession, MentorshipRequest
+
+# ── ERP Module ────────────────────────────────────────────────────────────────
+from .attendance import Attendance
+from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
+from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
+from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
+=======
 from .analytics import AnalyticsSnapshot
