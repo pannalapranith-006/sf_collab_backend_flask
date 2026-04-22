@@ -339,7 +339,181 @@ def get_user_profile():
         return error_response(f'Failed to retrieve profile: {str(e)}', 500)
 
 
-# ============= ENDPOINT 4: Update User Profile =============
+# ============= ENDPOINT 5: Get Rich Profile Data (for ProfileStats / Profile page) =============
+@profile_bp.route('/users/<int:user_id>/profile', methods=['GET'])
+@jwt_required()
+def get_rich_user_profile(user_id):
+    """
+    Get a user's complete profile including all stats, memberships, ideas,
+    achievements, tasks, and activity data needed by ProfileStats.jsx and Profile.jsx.
+
+    Returns a superset of user.to_dict() with all relational data joined in.
+    """
+    try:
+        current_user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+
+        if not user:
+            return error_response('User not found', 404)
+
+        is_own_profile = current_user_id == user_id
+
+        # ── Base user dict ────────────────────────────────────────────────
+        data = user.to_dict(
+            include_statistics=True,
+            public=not is_own_profile
+        )
+
+        # ── Founded startups ─────────────────────────────────────────────
+        try:
+            from app.models.startup import Startup
+            founded = Startup.query.filter_by(
+                creator_id=user_id, status='active'
+            ).all()
+            data['foundedStartups'] = [s.to_dict() for s in founded]
+        except Exception:
+            data['foundedStartups'] = []
+
+        # ── Startup memberships (non-founder) ────────────────────────────
+        try:
+            from app.models.startUpMember import StartupMember
+            memberships = StartupMember.query.filter_by(
+                user_id=user_id, is_active=True
+            ).all()
+            data['startupMemberships'] = [
+                {
+                    'id': m.id,
+                    'role': m.role.value if hasattr(m.role, 'value') else m.role,
+                    'joinedAt': m.joined_at.isoformat() if m.joined_at else None,
+                    'startup': m.member_startup.to_dict() if m.member_startup else None
+                }
+                for m in memberships
+            ]
+        except Exception:
+            data['startupMemberships'] = []
+
+        # ── Ideas ────────────────────────────────────────────────────────
+        try:
+            ideas = user.ideas.all()
+            data['ideas'] = [
+                {
+                    'id': i.id,
+                    'title': i.title,
+                    'description': i.description,
+                    'createdAt': i.created_at.isoformat() if i.created_at else None
+                }
+                for i in ideas
+            ]
+        except Exception:
+            data['ideas'] = []
+
+        # ── Achievements ─────────────────────────────────────────────────
+        try:
+            achievements = user.user_achievements.filter_by(is_completed=True).all()
+            data['achievements'] = [
+                {
+                    'id': a.id,
+                    'unlocked_at': a.unlocked_at.isoformat() if hasattr(a, 'unlocked_at') and a.unlocked_at else None,
+                    'achievement': a.achievement.to_dict() if hasattr(a, 'achievement') and a.achievement else None
+                }
+                for a in achievements
+            ]
+        except Exception:
+            data['achievements'] = []
+
+        # ── Assigned tasks ───────────────────────────────────────────────
+        try:
+            assigned = user.assigned_tasks.all()
+            completed = [t for t in assigned if t.status == 'completed']
+            pending   = [t for t in assigned if t.status != 'completed']
+            data['assignedTasks'] = {
+                'total':     len(assigned),
+                'completed': len(completed),
+                'pending':   len(pending)
+            }
+        except Exception:
+            data['assignedTasks'] = {'total': 0, 'completed': 0, 'pending': 0}
+
+        # ── Knowledge posts ──────────────────────────────────────────────
+        try:
+            kposts = user.knowledge_posts.all()
+            data['knowledgePosts'] = [
+                {
+                    'id': k.id,
+                    'title': getattr(k, 'title', ''),
+                    'titleDescription': getattr(k, 'title_description', ''),
+                    'views': getattr(k, 'views', 0),
+                    'likes': getattr(k, 'likes', 0),
+                    'downloads': getattr(k, 'downloads', 0),
+                    'createdAt': k.created_at.isoformat() if k.created_at else None
+                }
+                for k in kposts
+            ]
+        except Exception:
+            data['knowledgePosts'] = []
+
+        # ── Posts ────────────────────────────────────────────────────────
+        try:
+            posts = user.posts.all() if hasattr(user, 'posts') else []
+            data['posts'] = [
+                {
+                    'id': p.id,
+                    'content': getattr(p, 'content', ''),
+                    'likes': getattr(p, 'likes', 0),
+                    'commentsCount': getattr(p, 'comments_count', 0),
+                    'shares': getattr(p, 'shares', 0),
+                    'createdAt': p.created_at.isoformat() if p.created_at else None
+                }
+                for p in posts
+            ]
+        except Exception:
+            data['posts'] = []
+
+        # ── Friends count ────────────────────────────────────────────────
+        try:
+            from app.models.friendRequest import FriendRequest
+            accepted_friends = FriendRequest.query.filter(
+                FriendRequest.status == 'accepted',
+                (FriendRequest.sender_id == user_id) |
+                (FriendRequest.receiver_id == user_id)
+            ).count()
+            data['friendsCount'] = accepted_friends
+        except Exception:
+            data['friendsCount'] = 0
+
+        # ── Transactions (own profile only) ──────────────────────────────
+        if is_own_profile:
+            try:
+                txs = user.transactions.all() if hasattr(user, 'transactions') else []
+                data['transactions'] = [
+                    {
+                        'id': t.id,
+                        'type': getattr(t, 'type', 'payment'),
+                        'amount': getattr(t, 'amount', 0),
+                        'currency': getattr(t, 'currency', 'usd'),
+                        'status': getattr(t, 'status', 'completed'),
+                        'donation_message': getattr(t, 'donation_message', None),
+                        'created_at': t.created_at.isoformat() if t.created_at else None
+                    }
+                    for t in txs
+                ]
+            except Exception:
+                data['transactions'] = []
+        else:
+            data['transactions'] = []
+
+        # ── Wallet / credits (own profile only) ──────────────────────────
+        if not is_own_profile:
+            data.pop('credits', None)
+            data.pop('wallet', None)
+
+        return success_response(data, 'Profile retrieved successfully', 200)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return error_response(f'Failed to retrieve profile: {str(e)}', 500)
+
 @profile_bp.route('/users/profile', methods=['PUT', 'PATCH'])
 @jwt_required()
 def update_user_profile():
