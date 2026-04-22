@@ -64,8 +64,19 @@ SCHEMA_MIGRATIONS = [
     ("ideas", "risk_level",          "VARCHAR(20) DEFAULT 'medium'"),
     ("ideas", "required_roles",      "JSON"),
     ("ideas", "roadmap_items",       "JSON"),
-    
-    ("ideas", "activated_as_startup_id", "INTEGER"),
+
+    # users table — fixes missing columns needed by auth/profile flows
+    ("users", "last_seen",                    "DATETIME"),
+    ("users", "last_login_ip",                "VARCHAR(45)"),
+    ("users", "total_revenue",                "FLOAT DEFAULT 0.0"),
+    ("users", "reputation_score",             "FLOAT DEFAULT 0.0"),
+    ("users", "storage_used_mb",              "FLOAT DEFAULT 0.0"),
+    ("users", "stripe_connect_account_id",    "VARCHAR(255)"),
+    ("users", "milestones_completed",         "INTEGER DEFAULT 0"),
+    ("users", "milestones_on_time",           "INTEGER DEFAULT 0"),
+    ("users", "tasks_completed",              "INTEGER DEFAULT 0"),
+    ("users", "tasks_on_time",                "INTEGER DEFAULT 0"),
+    ("users", "collaborations_count",         "INTEGER DEFAULT 0"),
 ]
 
 
@@ -145,6 +156,24 @@ def create_app(config_name=None):
     app.config["JWT_COOKIE_DOMAIN"] = None                       # ← CHANGED (localhost)
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
+    app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
+    app.config["JWT_REFRESH_COOKIE_PATH"] = "/api/auth/refresh"
+
+    # Support Bearer tokens for local dev onboarding flows while preserving
+    # cookie support for deployed environments.
+    is_production = os.getenv("FLASK_ENV") == "production"
+    if is_production:
+        app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
+        app.config["JWT_COOKIE_SECURE"] = True
+        app.config["JWT_COOKIE_SAMESITE"] = "None"
+        app.config["JWT_COOKIE_CSRF_PROTECT"] = True
+        app.config["JWT_COOKIE_DOMAIN"] = ".sfcollab.com"
+    else:
+        app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
+        app.config["JWT_COOKIE_SECURE"] = False
+        app.config["JWT_COOKIE_SAMESITE"] = "Lax"
+        app.config["JWT_COOKIE_CSRF_PROTECT"] = False
+        app.config["JWT_COOKIE_DOMAIN"] = None
 
 
     
@@ -157,7 +186,7 @@ def create_app(config_name=None):
     app.config['SESSION_COOKIE_PATH'] = '/'
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     
-    if os.getenv("FLASK_ENV") == "production":
+    if is_production:
         app.config["SESSION_COOKIE_SAMESITE"] = "None"
         app.config["SESSION_COOKIE_SECURE"] = True
     else:
@@ -202,17 +231,11 @@ def create_app(config_name=None):
     app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
-    allowed_origins = [
-        "http://localhost:5173", 
-        "http://127.0.0.1:5173",
-        "https://staging.sfcollab.com",
-        "https://sfcollab.com",
-        "https://sfclb.netlify.app"
-    ]
-
-    print(f"🚀 CORS ACTIVE FOR: {allowed_origins}")
-
-    CORS(app, resources={r"/*": {"origins": allowed_origins}}, 
+    print("Initializing CORS with origins:", app.config.get('CORS_ORIGINS', []))
+    allowed_origins = app.config.get('CORS_ORIGINS', [])
+    CORS(
+        app,
+        resources={r"/*": {"origins": allowed_origins}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
@@ -220,8 +243,12 @@ def create_app(config_name=None):
 
     @app.after_request
     def handle_cors(response):
-        # We let the CORS(app) block above handle the headers dynamically.
-        # This keeps the function but removes the hardcoded 'staging' override.
+        request_origin = request.headers.get("Origin")
+        if request_origin and request_origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = request_origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
         return response
 
     @app.route('/<path:path>', methods=['OPTIONS'])

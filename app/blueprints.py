@@ -1,6 +1,4 @@
 from .routes import (
-    # builder_routes,
-    # ai_routes,  # Commented - requires chromadb/pytorch
     auth_routes,
     user_routes,
     profile_routes,
@@ -8,7 +6,6 @@ from .routes import (
     knowledge_routes,
     main_routes,
     startup_routes,
-    # api_routes,
     project_goal_routes,
     startup_bookmark_routes,
     startup_member_routes,
@@ -38,34 +35,32 @@ from .routes import (
     task_routes,
     user_achievement_routes,
     outreach_routes,
-    # gemini_route,
-    # pdf_signing_routes,
-    # background_remover,
     image_editor_routes,
     business_plan_routes,
     cf_img_proccessing_routes,
-    
     permission_routes,
     user_permission_routes,
     activity_routes,
     access_request_routes,
-    
     friend_request_routes,
     waitlist_routes,
     feedback_routes,
+
+=======
     # scraper_routes,
+
     user_roles_routes,
     application_routes,
     contribution_ideas_routes,
     contribution_polls_routes,
     connection_routes,
-    payment_routes, 
+    payment_routes,
     user_social_routes,
     dashboard_routes,
-    # video_gen_routes,
     pitch_deck_routes,
-    wallet_routes, 
+    wallet_routes,
     store_routes,
+<<<<<<< HEAD
     ai_news_routes,
     #! removed background_remover_route,
     #! removed anime_converter_route
@@ -76,17 +71,99 @@ from .routes import (
     matchmaking_routes,
     collaboration_routes,
 
+=======
+>>>>>>> 7d1cff5c3f0d623defe916870e5f4f380926f671
     marketplace_routes,
     readiness_routes,
     balance_routes,
     crystal_routes,
     activation_routes,
     mentorship_routes,
+
+=======
     
+
 )
 
+# ── ERP Module ────────────────────────────────────────────────────────────────
+from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
+from .routes.analytics_routes import analytics_bp
+from .routes.activity_monitor_routes import activity_monitor_bp
 
 
+blueprints = [
+    { "blueprint": main_routes.main_bp,                              "url_prefix": '/' },
+    { "blueprint": auth_routes.bp,                                   "url_prefix": '/api/auth' },
+    { "blueprint": user_routes.users_bp,                             "url_prefix": '/api/users' },
+    { "blueprint": profile_routes.profile_bp,                        "url_prefix": '' },
+    { "blueprint": idea_routes.ideas_bp,                             "url_prefix": '/api/ideas' },
+    { "blueprint": knowledge_routes.knowledge_bp,                    "url_prefix": '/api/knowledge' },
+    { "blueprint": startup_routes.startups_bp,                       "url_prefix": '/api/startups' },
+    { "blueprint": project_goal_routes.project_goals_bp,             "url_prefix": '/api/project-goals' },
+    { "blueprint": startup_bookmark_routes.bookmarks_bp,             "url_prefix": '/api/startup-bookmarks' },
+    { "blueprint": startup_member_routes.startup_members_bp,         "url_prefix": '/api/startup-members' },
+    { "blueprint": team_member_routes.team_members_bp,               "url_prefix": '/api/team-members' },
+    { "blueprint": team_performance_routes.team_performance_bp,      "url_prefix": '/api/team-performance' },
+    { "blueprint": achievement_routes.achievements_bp,               "url_prefix": '/api/achievements' },
+    { "blueprint": calendar_event_routes.calendar_events_bp,         "url_prefix": '/api/calendar-events' },
+    { "blueprint": chat_routes.chat_bp,                              "url_prefix": '/api/chat' },
+    { "blueprint": conversation_routes.conversations_bp,             "url_prefix": '/api/conversations' },
+    { "blueprint": goal_milestone_routes.milestones_bp,              "url_prefix": '/api/milestones' },
+    { "blueprint": idea_bookmark_routes.idea_bookmarks_bp,           "url_prefix": '/api/idea-bookmarks' },
+    { "blueprint": idea_comment_routes.idea_comments_bp,             "url_prefix": '/api/idea-comments' },
+    { "blueprint": join_request_routes.join_requests_bp,             "url_prefix": '/api/join-requests' },
+    { "blueprint": knowledge_bookmark_routes.knowledge_bookmarks_bp, "url_prefix": '/api/knowledge-bookmarks' },
+    { "blueprint": knowledge_comment_routes.knowledge_comments_bp,   "url_prefix": '/api/knowledge-comments' },
+    { "blueprint": notification_routes.notification_bp,              "url_prefix": '/api/notifications' },
+    { "blueprint": post_routes.posts_bp,                             "url_prefix": '/api/posts' },
+    { "blueprint": post_comment_routes.post_comments_bp,             "url_prefix": '/api/post-comments' },
+    { "blueprint": post_like_routes.post_likes_bp,                   "url_prefix": '/api/post-likes' },
+    { "blueprint": post_media_routes.post_media_bp,                  "url_prefix": '/api/post-media' },
+    { "blueprint": resource_download_routes.resource_downloads_bp,   "url_prefix": '/api/resource-downloads' },
+    { "blueprint": resource_like_routes.resource_likes_bp,           "url_prefix": '/api/resource-likes' },
+    { "blueprint": resource_view_routes.resource_views_bp,           "url_prefix": '/api/resource-views' },
+    { "blueprint": story_routes.stories_bp,                          "url_prefix": '/api/stories' },
+    { "blueprint": story_view_routes.story_views_bp,                 "url_prefix": '/api/story-views' },
+    { "blueprint": suggestion_routes.suggestions_bp,                 "url_prefix": '/api/suggestions' },
+    { "blueprint": task_routes.tasks_bp,                             "url_prefix": '/api/tasks' },
+    { "blueprint": user_achievement_routes.user_achievements_bp,     "url_prefix": '/api/user-achievements' },
+    { "blueprint": access_request_routes.access_requests_bp,        "url_prefix": '/api/access-requests' },
+    { "blueprint": permission_routes.permissions_bp,                 "url_prefix": '/api/permissions' },
+    { "blueprint": user_permission_routes.user_permissions_bp,       "url_prefix": '/api/user-permissions' },
+    { "blueprint": friend_request_routes.friend_requests_bp,        "url_prefix": '/api/friend-requests' },
+    { "blueprint": activity_routes.activities_bp,                    "url_prefix": '/api/activities' },
+    { "blueprint": waitlist_routes.waitlist_bp,                      "url_prefix": '/api/waitlist' },
+    { "blueprint": business_plan_routes.plans_bp,                    "url_prefix": '/api/plans' },
+    { "blueprint": image_editor_routes.image_editor_bp,              "url_prefix": '/api/image-editor' },
+    { "blueprint": cf_img_proccessing_routes.cf_bp,                  "url_prefix": '/api/cf' },
+    { "blueprint": feedback_routes.feedback_bp,                      "url_prefix": '/api/feedback' },
+    { "blueprint": user_roles_routes.user_roles_bp,                  "url_prefix": '/api/user-roles' },
+    { "blueprint": application_routes.applications_bp,               "url_prefix": '/api/applications' },
+    { "blueprint": contribution_ideas_routes.bp,                     "url_prefix": '/api/contribution-ideas' },
+    { "blueprint": contribution_polls_routes.poll_bp,                "url_prefix": '/api/contribution-polls' },
+    { "blueprint": payment_routes.payment_bp,                        "url_prefix": '/api/payments' },
+    { "blueprint": outreach_routes.outreach_bp,                      "url_prefix": '/api/outreach' },
+    { "blueprint": connection_routes.connections_bp,                 "url_prefix": '/api/connections' },
+    { "blueprint": user_social_routes.user_social_bp,                "url_prefix": '/api/user-social' },
+    { "blueprint": dashboard_routes.dashboard_bp,                    "url_prefix": '/api/dashboard' },
+    { "blueprint": pitch_deck_routes.pitch_decks_bp,                 "url_prefix": '/api/pitch-decks' },
+    { "blueprint": wallet_routes.wallet_bp,                          "url_prefix": '/api/wallet' },
+    { "blueprint": store_routes.store_bp,                            "url_prefix": '/api/store' },
+    { "blueprint": marketplace_routes.marketplace_bp,                "url_prefix": '/api/marketplace' },
+    { "blueprint": readiness_routes.readiness_bp,                    "url_prefix": '/api/readiness' },
+    { "blueprint": balance_routes.balance_bp,                        "url_prefix": '/api/balance' },
+    { "blueprint": crystal_routes.crystals_bp,                       "url_prefix": '/api/crystals' },
+    { "blueprint": activation_routes.activation_bp,                  "url_prefix": '/api/activation' },
+    { "blueprint": mentorship_routes.mentorship_bp,                  "url_prefix": '/api/mentorship' },
+
+
+    # ── ERP Module ────────────────────────────────────────────────────────────
+    { "blueprint": attendance_bp,       "url_prefix": '/api/attendance' },
+    { "blueprint": alerts_bp,           "url_prefix": '/api/erp-alerts' },
+    { "blueprint": analytics_bp,        "url_prefix": '/analytics' },
+    { "blueprint": activity_monitor_bp, "url_prefix": '/api/activity' },
+    { "blueprint": daily_updates_bp,    "url_prefix": '/api/daily-updates' },
+=======
 blueprints = [ 
 { "blueprint": main_routes.main_bp, "url_prefix": '/'},
 { "blueprint": auth_routes.bp, "url_prefix": '/api/auth'},
@@ -156,10 +233,23 @@ blueprints = [
 {"blueprint": matchmaking_routes.matchmaking_bp, "url_prefix": "/api/matchmaking"},
 {"blueprint": collaboration_routes.collab_bp, "url_prefix": "/api/collaboration"},
 { "blueprint": marketplace_routes.marketplace_bp, "url_prefix": '/api/marketplace'},
+<<<<<<< HEAD
 #{ "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
+=======
+
+# { "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
+=======
+#{ "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
+
+>>>>>>> 7d1cff5c3f0d623defe916870e5f4f380926f671
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
 { "blueprint": activation_routes.activation_bp, "url_prefix": '/api/activation' },
 { "blueprint": mentorship_routes.mentorship_bp, "url_prefix": '/api/mentorship' },
+<<<<<<< HEAD
 ]
+=======
+
+]
+>>>>>>> 7d1cff5c3f0d623defe916870e5f4f380926f671
