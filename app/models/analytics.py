@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from extensions import db
+from app.extensions import db
 
 
 class AnalyticsSnapshot(db.Model):
@@ -55,3 +55,4 @@ class AnalyticsSnapshot(db.Model):
             "overdue_tasks":        self.overdue_tasks,
             "created_at":           self.created_at.isoformat() if self.created_at else None,
         }
+

@@ -27,8 +27,8 @@ from app.extensions import db
 from app.models.user import User
 from app.models.Enums import UserStatus
 from app.models.attendance import Attendance
+from app.models.analytics import AnalyticsSnapshot
 from app.models.erp_support import DailyUpdate, Holiday
-from app.models.erp_activity import AnalyticsSnapshot, UserActivity
 
 logger = logging.getLogger(__name__)
 
@@ -556,3 +556,4 @@ def run_nightly_snapshot():
                     AnalyticsService.save_snapshot(wid, period)
                 except Exception as exc:
                     logger.error(f'[Analytics][ERR] workspace={wid} period={period} → {exc}')
+

@@ -240,20 +240,11 @@ def register():
             "user": get_user_response_data(user),
             "access_token": access_token,
             "refresh_token": refresh_token
-
-=======
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "user": get_user_response_data(user)
-=======
-
-        })
-        
+        })     
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
 
-        return response
-        
+        return response      
     except Exception as e:
         db.session.rollback()
         return error_response(f'Registration failed: {str(e)}', 500)
@@ -326,13 +317,6 @@ def login():
             "user": user_response,
             "access_token": access_token,
             "refresh_token": refresh_token
-
-=======
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "user": user_response
-=======
-
         })
 
         set_access_cookies(response, access_token)
