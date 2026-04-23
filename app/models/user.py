@@ -4,7 +4,7 @@ from app.extensions import db
 from app.models.Enums import UserStatus, Privacy, Theme, EmailDigest, UserRoles
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models.workspace import Workspace
-from app.models
+from app.models.workspace_member import WorkspaceMember
 
 class User(db.Model):
     __tablename__ = 'users'
