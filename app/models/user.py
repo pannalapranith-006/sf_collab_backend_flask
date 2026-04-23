@@ -3,6 +3,8 @@ from sqlalchemy import Enum, JSON
 from app.extensions import db
 from app.models.Enums import UserStatus, Privacy, Theme, EmailDigest, UserRoles
 from werkzeug.security import generate_password_hash, check_password_hash
+from app.models.workspace import Workspace
+from app.models
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -881,3 +883,9 @@ class User(db.Model):
         self.storage_used_mb = max((self.storage_used_mb or 0) - old_file_size_mb + new_file_size_mb, 0)
         
     
+        #workspace ID
+    active_workspace_id = db.Column(
+    db.Integer,
+    db.ForeignKey("workspaces.id"),
+    nullable=True
+)

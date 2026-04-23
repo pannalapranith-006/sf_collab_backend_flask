@@ -18,6 +18,9 @@ from app.services.email_service import EmailService
 from flask_session import Session
 import stripe
 from app.services.ai_news.scheduler import start_scheduler
+from app.models.workspace import Workspace
+from app.models.workspace_member import WorkspaceMember      
+
 
 WEBHOOK_SECRET = b'sFcollab_2025_secretKey!'
 

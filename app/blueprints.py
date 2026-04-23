@@ -1,3 +1,4 @@
+from app.routes.workspace_routes import workspace_bp
 from .routes import (
     # builder_routes,
     # ai_routes,  # Commented - requires chromadb/pytorch
@@ -153,5 +154,6 @@ blueprints = [
 # { "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
+{ "blueprint": workspace_bp, "url_prefix": "/api/workspaces" }, # workspace
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
 ]
