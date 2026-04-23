@@ -13,7 +13,7 @@ class Task(db.Model):
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     priority = db.Column(Enum('low', 'medium', 'high'), default='medium')
-    status = db.Column(Enum('to_do', 'in_progress', 'completed', 'overdue'), default='today')
+    status = db.Column(Enum('today', 'in_progress', 'completed', 'overdue'), default='today')
     visible_by = db.Column(db.String(50), default='all')  # 'public', 'team', 'private'
     tags = db.Column(JSON, default=[])
     labels = db.Column(JSON, default=[])

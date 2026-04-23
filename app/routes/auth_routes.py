@@ -149,8 +149,12 @@ def grant_default_permissions(user_id):
 
 
 def get_user_response_data(user):
-
-    return user.to_dict(include_statistics=True, include_recent_activity=True)
+    try:
+        return user.to_dict(include_statistics=True, include_recent_activity=True)
+    except Exception as exc:
+        # Keep auth endpoints functional even if optional analytics tables drift.
+        print(f"WARN: user statistics unavailable during auth response: {exc}")
+        return user.to_dict(include_statistics=False, include_recent_activity=False)
 
 
 
