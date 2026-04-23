@@ -7,12 +7,14 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, timedelta
 from app.models.task import Task
+from app.models.erp_task import ErpTask
 from app.models.user import User
 from app.models.startUpMember import StartupMember
 from app.services.achievement_service import AchievementService
 from app.extensions import db
 from app.utils.helper import error_response, success_response, paginate
 from app.utils.plans_utils import can_create_task_or_milestone
+from app.utils.workspace_permissions import get_workspace_membership, is_global_admin
 # ===== NOTIFICATION IMPORTS =====
 from app.notifications.helpers import (
     notify_task_assigned,
@@ -596,6 +598,40 @@ def claim_task(task_id):
 def delete_task(task_id):
     """Delete task"""
     current_user_id = int(get_jwt_identity())
+
+    workspace_id_raw = request.args.get('workspace_id')
+    if workspace_id_raw is not None:
+        try:
+            workspace_id = int(workspace_id_raw)
+        except (TypeError, ValueError):
+            return error_response('workspace_id must be an integer', 400)
+
+        erp_task = ErpTask.query.filter_by(id=task_id, workspace_id=workspace_id).first()
+        if not erp_task:
+            return error_response('ERP task not found', 404)
+
+        current_user = User.query.get(current_user_id)
+        if not current_user:
+            return error_response('User not found', 404)
+
+        membership = get_workspace_membership(workspace_id, current_user_id)
+        member_role = membership.role.value if (membership and hasattr(membership.role, 'value')) else (membership.role if membership else None)
+
+        can_delete_erp = (
+            erp_task.created_by == current_user_id
+            or member_role == 'admin'
+            or is_global_admin(current_user)
+        )
+        if not can_delete_erp:
+            return error_response('Unauthorized to delete this ERP task', 403)
+
+        try:
+            db.session.delete(erp_task)
+            db.session.commit()
+            return success_response(message='ERP task deleted successfully')
+        except Exception as e:
+            db.session.rollback()
+            return error_response(f'Failed to delete ERP task: {str(e)}', 500)
     
     task = Task.query.get(task_id)
     if not task:

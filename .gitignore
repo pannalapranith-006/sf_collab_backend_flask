@@ -17,6 +17,7 @@ build/
 .next/
 out/
 coverage/
+.coverage
 
 # --- Python / Flask ---
 __pycache__/

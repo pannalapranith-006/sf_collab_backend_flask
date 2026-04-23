@@ -77,6 +77,15 @@ from .routes import (
     readiness_routes,
     balance_routes,
     crystal_routes,
+    workspace_routes,
+    attendance_routes,
+    holiday_routes,
+    daily_update_routes,
+    erp_task_routes,
+    erp_document_routes,
+    erp_alert_routes,
+    erp_analytics_routes,
+    erp_activity_routes,
     
 )
 
@@ -154,4 +163,13 @@ blueprints = [
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
+{ "blueprint": workspace_routes.workspace_bp, "url_prefix": '/api/workspace' },
+{ "blueprint": attendance_routes.attendance_bp, "url_prefix": '/api/attendance' },
+{ "blueprint": holiday_routes.holiday_bp, "url_prefix": '/api/holiday' },
+{ "blueprint": daily_update_routes.updates_bp, "url_prefix": '/api/updates' },
+{ "blueprint": erp_task_routes.erp_tasks_bp, "url_prefix": '/api/tasks' },
+{ "blueprint": erp_document_routes.erp_documents_bp, "url_prefix": '/api/documents' },
+{ "blueprint": erp_alert_routes.erp_alerts_bp, "url_prefix": '/api/alerts' },
+{ "blueprint": erp_analytics_routes.erp_analytics_bp, "url_prefix": '/api/analytics' },
+{ "blueprint": erp_activity_routes.erp_activity_bp, "url_prefix": '/api/activity' },
 ]
