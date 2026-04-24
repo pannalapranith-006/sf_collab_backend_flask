@@ -77,7 +77,8 @@ from .routes import (
     readiness_routes,
     balance_routes,
     crystal_routes,
-    
+    matchmaking_routes,
+    collaboration_routes,
 )
 
 
@@ -154,4 +155,6 @@ blueprints = [
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
+{"blueprint": matchmaking_routes.matchmaking_bp,"url_prefix": "/api/matchmaking"},
+{"blueprint": collaboration_routes.collab_bp,"url_prefix": "/api/collaboration"}
 ]

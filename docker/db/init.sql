@@ -2478,3 +2478,86 @@ CREATE TABLE IF NOT EXISTS alance_transactions (
   PRIMARY KEY (id),
   CONSTRAINT alance_tx_ibfk_1 FOREIGN KEY (alance_id) REFERENCES alances (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+DROP TABLE IF EXISTS `visions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+
+CREATE TABLE `visions` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `creator_id` int NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `problem_statement` text NOT NULL,
+  `solution` text NOT NULL,
+  `sector` varchar(100) DEFAULT NULL,
+  `technologies` json DEFAULT NULL,
+  `roles_needed` json DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (`id`),
+  KEY `creator_id` (`creator_id`),
+  KEY `sector` (`sector`),
+
+  CONSTRAINT `visions_ibfk_1`
+    FOREIGN KEY (`creator_id`)
+    REFERENCES `users` (`id`)
+    ON DELETE CASCADE
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `visions` WRITE;
+/*!40000 ALTER TABLE `visions` DISABLE KEYS */;
+/*!40000 ALTER TABLE `visions` ENABLE KEYS */;
+UNLOCK TABLES;
+
+DROP TABLE IF EXISTS `collaboration_requests`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+
+CREATE TABLE `collaboration_requests` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `vision_id` int NOT NULL,
+  `sender_id` int NOT NULL,
+  `receiver_id` int NOT NULL,
+  `role` varchar(100) NOT NULL,
+  `commitment` varchar(100) DEFAULT NULL,
+  `equity` varchar(50) DEFAULT NULL,
+  `description` text,
+  `status` varchar(50) DEFAULT 'PENDING',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `responded_at` datetime DEFAULT NULL,
+
+  PRIMARY KEY (`id`),
+
+  KEY `vision_id` (`vision_id`),
+  KEY `sender_id` (`sender_id`),
+  KEY `receiver_id` (`receiver_id`),
+  KEY `status` (`status`),
+
+  CONSTRAINT `collaboration_requests_ibfk_1`
+    FOREIGN KEY (`vision_id`)
+    REFERENCES `visions` (`id`)
+    ON DELETE CASCADE,
+
+  CONSTRAINT `collaboration_requests_ibfk_2`
+    FOREIGN KEY (`sender_id`)
+    REFERENCES `users` (`id`)
+    ON DELETE CASCADE,
+
+  CONSTRAINT `collaboration_requests_ibfk_3`
+    FOREIGN KEY (`receiver_id`)
+    REFERENCES `users` (`id`)
+    ON DELETE CASCADE
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+LOCK TABLES `collaboration_requests` WRITE;
+/*!40000 ALTER TABLE `collaboration_requests` DISABLE KEYS */;
+/*!40000 ALTER TABLE `collaboration_requests` ENABLE KEYS */;
+UNLOCK TABLES;
