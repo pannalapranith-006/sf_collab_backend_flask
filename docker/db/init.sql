@@ -2420,7 +2420,7 @@ CREATE TABLE IF NOT EXISTS crystal_wallets (
   CONSTRAINT crystal_wallets_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS isibility_boosts (
+CREATE TABLE IF NOT EXISTS visibility_boosts (
   id int NOT NULL AUTO_INCREMENT,
   user_id int NOT NULL,
   startup_id int NOT NULL,
