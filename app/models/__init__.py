@@ -65,7 +65,8 @@ from .EscrowTransaction import EscrowTransaction
 
 # Economy Layer 3
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
-from .analytics import AnalyticsSnapshot
+#from .analytics import AnalyticsSnapshot
+#from .analytics import AnalyticsSnapshot
   
 from app.models.drive_file import DriveFile                             
 from app.models.drive_file_relation import DriveFileRelation
