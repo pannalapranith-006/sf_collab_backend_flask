@@ -3,35 +3,6 @@ from sqlalchemy import ForeignKey, UniqueConstraint, CheckConstraint, Index
 from sqlalchemy.orm import relationship
 from app.extensions import db
 
-class DriveFolder(db.Model):
-    __tablename__ = 'drive_folders'
-
-    id          = db.Column(db.Integer, primary_key=True)
-    name        = db.Column(db.String(255), nullable=False)
-    parent_id   = db.Column(db.Integer, ForeignKey('drive_folders.id', ondelete='CASCADE'), nullable=True)
-    workspace_id = db.Column(db.Integer, ForeignKey('startups.id',      ondelete='CASCADE'), nullable=False)
-    created_by  = db.Column(db.Integer, ForeignKey('users.id'), nullable=False)
-    
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
-
-    # Relationships
-    parent      = relationship('DriveFolder', remote_side=[id], backref='subfolders')
-    startup     = relationship('Startup',     back_populates='drive_folders_list')
-    creator     = relationship('User',        back_populates='created_folders')
-    files       = relationship('DriveFile',   back_populates='folder', cascade='all, delete-orphan')
-    permissions = relationship('DriveFilePermission', back_populates='folder', cascade='all, delete-orphan')
-
-    def to_dict(self):
-        return {
-            'id':           self.id,
-            'name':         self.name,
-            'parent_id':    self.parent_id,
-            'workspace_id': self.workspace_id,
-            'created_by':   self.created_by,
-            'created_at':   self.created_at.isoformat(),
-        }
-
 class DriveFile(db.Model):
     __tablename__ = 'drive_files'
 
@@ -47,7 +18,7 @@ class DriveFile(db.Model):
     current_version_id = db.Column(db.Integer, ForeignKey('drive_file_versions.id', ondelete='SET NULL'), nullable=True)
 
     # AI Enrichment & Metadata
-    owner_scope_type = db.Column(db.String(20), default='startup')  # personal | startup | org
+    owner_scope_type = db.Column(db.String(20), default='startup')
     owner_scope_id   = db.Column(db.Integer)
     visibility_scope = db.Column(db.String(20), default='team')
     
@@ -136,59 +107,4 @@ class DriveFileVersion(db.Model):
             'file_url':       self.file_url,
             'is_canonical':   self.is_canonical,
             'created_at':     self.created_at.isoformat(),
-        }
-
-class DriveFilePermission(db.Model):
-    __tablename__ = 'drive_file_permissions'
-
-    id        = db.Column(db.Integer, primary_key=True)
-    file_id   = db.Column(db.Integer, ForeignKey('drive_files.file_id',  ondelete='CASCADE'), nullable=True)
-    folder_id = db.Column(db.Integer, ForeignKey('drive_folders.id',    ondelete='CASCADE'), nullable=True)
-    user_id   = db.Column(db.Integer, ForeignKey('users.id',            ondelete='CASCADE'), nullable=False)
-
-    role       = db.Column(db.String(20), default='viewer')
-
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-
-    __table_args__ = (
-        CheckConstraint('file_id IS NOT NULL OR folder_id IS NOT NULL', name='ck_permission_target'),
-        Index('idx_permission_user', 'user_id'),
-    )
-
-    # Relationships
-    file   = relationship('DriveFile',   back_populates='permissions')
-    folder = relationship('DriveFolder', back_populates='permissions')
-    user   = relationship('User',        back_populates='drive_permissions_list')
-
-    def to_dict(self):
-        return {
-            'id':         self.id,
-            'role':       self.role,
-            'user_id':    self.user_id,
-        }
-
-class DriveFileRelation(db.Model):
-    __tablename__ = 'drive_file_relations'
-
-    id                  = db.Column(db.Integer, primary_key=True)
-    file_id             = db.Column(db.Integer, ForeignKey('drive_files.file_id', ondelete='CASCADE'), nullable=False)
-    related_entity_type = db.Column(db.String(50), nullable=False)
-    related_entity_id   = db.Column(db.Integer,    nullable=False)
-    
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-
-    __table_args__ = (
-        CheckConstraint("related_entity_type IN ('task', 'milestone', 'meeting')", name='ck_relation_entity_type'),
-    )
-
-    # Relationships
-    file = relationship('DriveFile', back_populates='relations')
-
-    def to_dict(self):
-        return {
-            'id':                  self.id,
-            'file_id':             self.file_id,
-            'related_entity_type': self.related_entity_type,
-            'related_entity_id':   self.related_entity_id,
-            'created_at':          self.created_at.isoformat(),
         }

@@ -77,4 +77,6 @@ from .erp_activity import UserActivity, ActivityMonitorJobHealth
 from .analytics import AnalyticsSnapshot
 
 #  SF Drive Module 
-from .drive import DriveFile, DriveFolder, DriveFileVersion, DriveFilePermission, DriveFileRelation
+from .drive_folder import DriveFolder
+from .drive_file import DriveFile, DriveFileVersion
+from .drive_permission import DriveFilePermission, DriveFileRelation
