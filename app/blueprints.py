@@ -69,6 +69,7 @@ from .routes import (
     mentorship_routes,
     erp_routes,
     milestone_file_routes,
+    drive_routes,
 )
 
 # ── ERP Module ────────────────────────────────────────────────────────────────
@@ -151,5 +152,8 @@ blueprints = [
     
     # Milestone Integration
     { "blueprint": milestone_file_routes.milestone_files_bp, "url_prefix": '/api/milestone-files' },
+    
+
+    { "blueprint": drive_routes.drive_bp, "url_prefix": '/api/drive' },
 ]
 

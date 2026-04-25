@@ -79,3 +79,6 @@ from .analytics import AnalyticsSnapshot
 
 # Milestone Integration
 from .MilestoneFile import MilestoneFile
+
+# SF Drive
+from .DriveFile import DriveFile
