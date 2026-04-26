@@ -8,6 +8,25 @@ from extensions import db
 class Attendance(db.Model):
     __tablename__ = 'attendance'
 
+    id             = db.Column(db.Integer, primary_key=True)
+    user_id        = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    workspace_id   = db.Column(db.Integer, nullable=False, index=True)  # logical grouping — no FK until Workspace model exists
+    date           = db.Column(db.Date, nullable=False)
+    clock_in_time  = db.Column(db.DateTime)
+    clock_out_time = db.Column(db.DateTime)
+    status         = db.Column(db.String(20), nullable=False)   # present / late / absent
+    notes          = db.Column(db.Text)
+    created_at     = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at     = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('attendance_records', lazy='dynamic'))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'date', 'workspace_id',
+                            name='unique_user_attendance_per_day'),
+    )
+
+    def calculate_status(self, late_threshold_hour=9, late_threshold_minute=0):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     workspace_id = db.Column(db.Integer, db.ForeignKey('workspaces.id'), nullable=False)
