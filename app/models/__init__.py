@@ -74,6 +74,12 @@ from .attendance import Attendance
 from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
 from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
-=======
-from .analytics import AnalyticsSnapshot
-=======
+
+# ── SF Meet ───────────────────────────────────────────────────────────────────
+from .meet_meeting import MeetMeeting
+from .meet_participant import MeetParticipant
+from .meet_artifact import MeetArtifact
+from .meet_decision import MeetDecision
+from .meet_action_item import MeetActionItem
+from .meet_annotation import MeetAnnotation
+from .meet_audit_log import MeetAuditLog

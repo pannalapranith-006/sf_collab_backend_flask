@@ -2413,28 +2413,28 @@ UNLOCK TABLES;
 CREATE TABLE IF NOT EXISTS crystal_wallets (
   id int NOT NULL AUTO_INCREMENT,
   user_id int NOT NULL,
-  alance int DEFAULT 0,
+  balance int DEFAULT 0,
   updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY user_id (user_id),
   CONSTRAINT crystal_wallets_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS isibility_boosts (
+CREATE TABLE IF NOT EXISTS visibility_boosts (
   id int NOT NULL AUTO_INCREMENT,
   user_id int NOT NULL,
   startup_id int NOT NULL,
-  oost_type varchar(50) NOT NULL,
+  boost_type varchar(50) NOT NULL,
   expires_at datetime NOT NULL,
   is_active tinyint(1) DEFAULT 1,
   PRIMARY KEY (id),
-  CONSTRAINT isibility_boosts_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  CONSTRAINT visibility_boosts_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS alances (
+CREATE TABLE IF NOT EXISTS balances (
   id int NOT NULL AUTO_INCREMENT,
   user_id int NOT NULL,
-  vailable int NOT NULL DEFAULT 0,
+  available int NOT NULL DEFAULT 0,
   pending int NOT NULL DEFAULT 0,
   escrow_locked int NOT NULL DEFAULT 0,
   	otal_deposited int NOT NULL DEFAULT 0,
@@ -2445,7 +2445,7 @@ CREATE TABLE IF NOT EXISTS alances (
   updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY ux_balances_user_id (user_id),
-  CONSTRAINT alances_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+  CONSTRAINT balances_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS escrow_transactions (
@@ -2454,7 +2454,7 @@ CREATE TABLE IF NOT EXISTS escrow_transactions (
   payee_id int NOT NULL,
   payer_balance_id int NOT NULL,
   payee_balance_id int DEFAULT NULL,
-  mount_cents int NOT NULL,
+  amount_cents int NOT NULL,
   currency varchar(3) NOT NULL DEFAULT 'USD',
   status varchar(30) NOT NULL DEFAULT 'created',
   created_at datetime DEFAULT CURRENT_TIMESTAMP,
@@ -2462,18 +2462,18 @@ CREATE TABLE IF NOT EXISTS escrow_transactions (
   PRIMARY KEY (id),
   CONSTRAINT escrow_ibfk_1 FOREIGN KEY (payer_id) REFERENCES users (id),
   CONSTRAINT escrow_ibfk_2 FOREIGN KEY (payee_id) REFERENCES users (id),
-  CONSTRAINT escrow_ibfk_3 FOREIGN KEY (payer_balance_id) REFERENCES alances (id)
+  CONSTRAINT escrow_ibfk_3 FOREIGN KEY (payer_balance_id) REFERENCES balances (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS alance_transactions (
+CREATE TABLE IF NOT EXISTS balance_transactions (
   id int NOT NULL AUTO_INCREMENT,
-  alance_id int NOT NULL,
+  balance_id int NOT NULL,
   user_id int NOT NULL,
   	x_type varchar(30) NOT NULL,
-  mount int NOT NULL,
-  alance_before int NOT NULL,
-  alance_after int NOT NULL,
+  amount int NOT NULL,
+  balance_before int NOT NULL,
+  balance_after int NOT NULL,
   created_at datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  CONSTRAINT alance_tx_ibfk_1 FOREIGN KEY (alance_id) REFERENCES alances (id) ON DELETE CASCADE
+  CONSTRAINT balance_tx_ibfk_1 FOREIGN KEY (balance_id) REFERENCES balances (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
