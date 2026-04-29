@@ -238,7 +238,7 @@ def create_app(config_name=None):
         resources={r"/*": {"origins": allowed_origins}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
     @app.after_request
