@@ -1,6 +1,5 @@
 """
 Balance Model — Real Money Layer
-=================================
 Balance represents REAL financial value inside the SF platform.
 
 It is strictly separate from Crystals (visibility) and SF Coins (gamification).
