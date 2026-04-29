@@ -77,7 +77,6 @@ class WorkspaceAlertConfig(db.Model):
     inactivity_days    = db.Column(db.Integer, default=3)
     late_grace_minutes = db.Column(db.Integer, default=15)
     skip_weekends      = db.Column(db.Boolean, default=True)
-=======
 """
 alerts_engine.py  —  SFCollab ERP Alert System Core Engine (v3)
 ════════════════════════════════════════════════════════════════

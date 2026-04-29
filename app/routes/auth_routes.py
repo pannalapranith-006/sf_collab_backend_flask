@@ -239,11 +239,7 @@ def register():
             "message": "Registration successful",
             "user": get_user_response_data(user),
             "access_token": access_token,
-            "refresh_token": refresh_token
-=======
-            "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": get_user_response_data(user)
         })
         
         set_access_cookies(response, access_token)
@@ -322,11 +318,7 @@ def login():
             "message": "Login successful",
             "user": user_response,
             "access_token": access_token,
-            "refresh_token": refresh_token
-=======
-            "access_token": access_token,
             "refresh_token": refresh_token,
-            "user": user_response
         })
 
         set_access_cookies(response, access_token)
@@ -338,8 +330,7 @@ def login():
         print(f"DEBUG: Exception in login: {str(e)}")
         print(f"DEBUG: Traceback: {traceback.format_exc()}")
         return error_response(f'Login failed: {str(e)}', 500)
-
-
+    
 # ========================== VERIFY EMAIL ==========================
 @bp.route('/send-verification-code', methods=['POST'])
 @jwt_required()

@@ -1,6 +1,5 @@
 """
 Seller Model — SF Marketplace
-================================
 A Seller is a user who has registered to sell digital resources
 on the SF Marketplace.
 
