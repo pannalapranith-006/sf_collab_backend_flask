@@ -77,6 +77,8 @@ from .routes import (
     readiness_routes,
     balance_routes,
     crystal_routes,
+    sfdrivefolder_routes,
+    sfdrivetag_routes,
     
 )
 
@@ -154,4 +156,7 @@ blueprints = [
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
+{ "blueprint": sfdrivefolder_routes.folder_bp,"url_prefix":'/api/sfdrive/folders'},
+{ "blueprint": sfdrivetag_routes.tag_bp,"url_prefix":'/api/sfdrive/tags'},
+
 ]

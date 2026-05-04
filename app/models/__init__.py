@@ -65,3 +65,9 @@ from .EscrowTransaction import EscrowTransaction
 
 # Economy Layer 3: Crystals (visibility acceleration only — NOT money)
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
+
+#SFDrive Folder System
+from .sfdrivefolder import Folder
+from .sfdrive_file import SFFile
+#SFDRIVE tagging system
+from .sfdrive_tag import Tag
