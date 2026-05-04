@@ -9,15 +9,29 @@ from flask_socketio import SocketIO
 from flask_limiter import Limiter
 from celery import Celery
 import os
+import redis
 
 oauth = OAuth()
 jwt = JWTManager()
 
-# ✅ FIXED CORS (handles preflight + all routes)
-cors = CORS(
-    resources={r"/*": {"origins": "*"}},
-    supports_credentials=True
+# JWT Blocklist with Redis
+jwt_redis_blocklist = redis.StrictRedis(
+    host=os.getenv("REDIS_HOST", "localhost"),
+    port=int(os.getenv("REDIS_PORT", 6379)),
+    db=int(os.getenv("REDIS_DB", 0)),
+    decode_responses=True,
 )
+
+
+@jwt.token_in_blocklist_loader
+def check_if_token_revoked(jwt_header, jwt_payload):
+    jti = jwt_payload["jti"]
+    token_in_redis = jwt_redis_blocklist.get(jti)
+    return token_in_redis is not None
+
+
+# ✅ FIXED CORS (handles preflight + all routes)
+cors = CORS(resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -32,27 +46,36 @@ socketio = SocketIO(
     engineio_logger=True,
 )
 
+
 # ---------------------------------------------------------------------------
 # Celery — currently NOT used (kept for compatibility, not initialized)
 # ---------------------------------------------------------------------------
 def make_celery(app=None):
     celery.conf.update(
-        broker_url=os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0")),
-        result_backend=os.getenv("CELERY_RESULT_BACKEND", os.getenv("REDIS_URL", "redis://localhost:6379/0")),
+        broker_url=os.getenv(
+            "CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        ),
+        result_backend=os.getenv(
+            "CELERY_RESULT_BACKEND", os.getenv("REDIS_URL", "redis://localhost:6379/0")
+        ),
         timezone="UTC",
     )
     if app:
+
         class ContextTask(celery.Task):
             def __call__(self, *args, **kwargs):
                 with app.app_context():
                     return self.run(*args, **kwargs)
+
         celery.Task = ContextTask
     return celery
+
 
 celery = Celery(__name__)
 
 from flask_jwt_extended import get_jwt_identity
 from flask import request
+
 
 def user_or_ip():
     try:

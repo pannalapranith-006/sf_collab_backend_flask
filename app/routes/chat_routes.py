@@ -22,14 +22,14 @@ from app.utils.chat_utils import (
     on_user_profile_created,
     on_founder_created,
     on_team_member_added,
-    on_team_member_removed
+    on_team_member_removed,
 )
 from app.notifications.helpers import (
     notify_new_message,
     notify_group_message,
     notify_mention_in_chat,
     notify_message_request,
-    notify_voice_message_received
+    notify_voice_message_received,
 )
 
 # Import socket events for real-time updates
@@ -42,6 +42,7 @@ try:
         emit_to_user,
         emit_notification,
     )
+
     SOCKET_ENABLED = True
 except ImportError:
     SOCKET_ENABLED = False
@@ -69,7 +70,10 @@ def allowed_file(filename: str) -> bool:
 
 
 def allowed_avatar(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_AVATAR_EXTENSIONS
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_AVATAR_EXTENSIONS
+    )
 
 
 def validate_file_size(file, max_size=MAX_FILE_SIZE) -> bool:
@@ -78,9 +82,11 @@ def validate_file_size(file, max_size=MAX_FILE_SIZE) -> bool:
     file.seek(0)
     return size <= max_size
 
+
 def get_user_full_name(user_id):
     """Helper to get user's full name"""
     from app.models.user import User
+
     user = User.query.get(user_id)
     if user:
         return f"{user.first_name or ''} {user.last_name or ''}".strip() or "Someone"
@@ -90,16 +96,17 @@ def get_user_full_name(user_id):
 def extract_mentions(content):
     """Extract @mentions from message content"""
     import re
+
     # Match @username patterns
-    mentions = re.findall(r'@(\w+)', content)
+    mentions = re.findall(r"@(\w+)", content)
     return mentions
 
 
 def get_user_by_username(username):
     """Get user by username for mentions"""
     from app.models.user import User
-    return User.query.filter_by(username=username).first()
 
+    return User.query.filter_by(username=username).first()
 
 
 # ─────────────────────────────────────────────────────────────
@@ -111,22 +118,22 @@ def get_conversations():
     try:
         current_user_id = get_jwt_identity()
         data = request.get_json(silent=True) or {}
-        delete_type = data.get('delete_type', 'everyone')
+        delete_type = data.get("delete_type", "everyone")
 
         user = User.query.get(current_user_id)
         if not user:
             return error_response("User not found", 404)
 
         # Support ?archived=true to fetch only archived, default fetches non-archived
-        include_archived = request.args.get('archived', 'false').lower() == 'true'
+        include_archived = request.args.get("archived", "false").lower() == "true"
 
         try:
             query = (
                 ChatConversation.query.join(conversation_participants)
                 .filter(conversation_participants.c.user_id == current_user_id)
                 .filter(
-                    (conversation_participants.c.is_hidden == False) |
-                    (conversation_participants.c.is_hidden == None)
+                    (conversation_participants.c.is_hidden == False)
+                    | (conversation_participants.c.is_hidden == None)
                 )
             )
             if include_archived:
@@ -135,14 +142,13 @@ def get_conversations():
             else:
                 # Exclude archived conversations (default)
                 query = query.filter(
-                    (conversation_participants.c.is_archived == False) |
-                    (conversation_participants.c.is_archived == None)
+                    (conversation_participants.c.is_archived == False)
+                    | (conversation_participants.c.is_archived == None)
                 )
             conversations = query.order_by(ChatConversation.updated_at.desc()).all()
         except Exception:
-            query = (
-                ChatConversation.query.join(conversation_participants)
-                .filter(conversation_participants.c.user_id == current_user_id)
+            query = ChatConversation.query.join(conversation_participants).filter(
+                conversation_participants.c.user_id == current_user_id
             )
             conversations = query.order_by(ChatConversation.updated_at.desc()).all()
 
@@ -160,6 +166,7 @@ def get_conversations():
         logging.error(f"Error in get_conversations: {str(e)}")
         return error_response(f"Failed to load conversations: {str(e)}", 500)
 
+
 @chat_bp.route("/conversations", methods=["POST"], strict_slashes=False)
 @jwt_required()
 def create_conversation():
@@ -170,7 +177,9 @@ def create_conversation():
         # accept either participant_ids or participantIds (frontend sometimes differs)
         participant_ids = data.get("participant_ids") or data.get("participantIds")
         if not participant_ids or not isinstance(participant_ids, list):
-            return error_response("Missing required field: participant_ids (must be a list)", 400)
+            return error_response(
+                "Missing required field: participant_ids (must be a list)", 400
+            )
 
         creator = User.query.get(current_user_id)
         if not creator:
@@ -230,6 +239,7 @@ def get_conversation(conversation_id):
         logging.error(f"Error getting conversation {conversation_id}: {str(e)}")
         return error_response(f"Failed to load conversation: {str(e)}", 500)
 
+
 @chat_bp.route("/conversations/<int:startup_id>", methods=["GET"])
 @jwt_required()
 def get_startup_conversation(startup_id):
@@ -237,7 +247,9 @@ def get_startup_conversation(startup_id):
         current_user_id = get_jwt_identity()
 
         user = User.query.get(current_user_id)
-        conversation = ChatConversation.query.filter_by(parent_startup_id=startup_id).first()
+        conversation = ChatConversation.query.filter_by(
+            parent_startup_id=startup_id
+        ).first()
 
         if not user or not conversation:
             return error_response("User or conversation not found", 404)
@@ -248,7 +260,9 @@ def get_startup_conversation(startup_id):
         return success_response({"conversation": conversation.to_dict(for_user=user)})
 
     except Exception as e:
-        logging.error(f"Error getting conversation for startup id:{startup_id}: {str(e)}")
+        logging.error(
+            f"Error getting conversation for startup id:{startup_id}: {str(e)}"
+        )
         return error_response(f"Failed to load conversation: {str(e)}", 500)
 
 
@@ -271,7 +285,11 @@ def get_or_create_direct_conversation():
         conversation = (
             ChatConversation.query.join(conversation_participants)
             .filter(ChatConversation.conversation_type == "direct")
-            .filter(conversation_participants.c.user_id.in_([current_user_id, other_user_id]))
+            .filter(
+                conversation_participants.c.user_id.in_(
+                    [current_user_id, other_user_id]
+                )
+            )
             .group_by(ChatConversation.id)
             .having(db.func.count(ChatConversation.id) == 2)
             .first()
@@ -280,10 +298,15 @@ def get_or_create_direct_conversation():
         if conversation:
             conversation.unhide_for_user(current_user_id)
             return success_response(
-                {"conversation": conversation.to_dict(for_user=current_user), "created": False}
+                {
+                    "conversation": conversation.to_dict(for_user=current_user),
+                    "created": False,
+                }
             )
 
-        conversation = ChatConversation(conversation_type="direct", created_by_id=current_user_id)
+        conversation = ChatConversation(
+            conversation_type="direct", created_by_id=current_user_id
+        )
         db.session.add(conversation)
         db.session.flush()
 
@@ -293,7 +316,10 @@ def get_or_create_direct_conversation():
         db.session.commit()
 
         return success_response(
-            {"conversation": conversation.to_dict(for_user=current_user), "created": True},
+            {
+                "conversation": conversation.to_dict(for_user=current_user),
+                "created": True,
+            },
             "Conversation created",
         )
 
@@ -301,6 +327,8 @@ def get_or_create_direct_conversation():
         db.session.rollback()
         logging.error(f"Failed to get/create conversation: {str(e)}")
         return error_response(f"Failed to get or create conversation: {str(e)}", 500)
+
+
 @chat_bp.route("/conversations/group", methods=["POST"])
 @jwt_required()
 def create_group_conversation():
@@ -322,9 +350,7 @@ def create_group_conversation():
             return error_response("User not found", 404)
 
         conversation = ChatConversation(
-            conversation_type="group",
-            name=name,
-            created_by_id=current_user_id
+            conversation_type="group", name=name, created_by_id=current_user_id
         )
         db.session.add(conversation)
         db.session.flush()
@@ -348,6 +374,7 @@ def create_group_conversation():
         db.session.rollback()
         logging.error(f"Failed to create group conversation: {str(e)}")
         return error_response(f"Failed to create group conversation: {str(e)}", 500)
+
 
 # ─────────────────────────────────────────────────────────────
 # GENERAL CHAT
@@ -401,6 +428,7 @@ def mark_conversation_read(conversation_id):
         logging.error(f"Error marking conversation as read: {str(e)}")
         return error_response(f"Failed to mark conversation as read: {str(e)}", 500)
 
+
 # ─────────────────────────────────────────────────────────────
 # GET MESSAGES
 # ─────────────────────────────────────────────────────────────
@@ -420,16 +448,19 @@ def get_messages(conversation_id):
 
         if not conversation.is_user_participant(current_user_id):
             return error_response("Access denied", 403)
-        return fetch_messages(conversation, user, limit, offset)
-    
+        return fetch_messages(
+            conversation, user, limit, offset, current_user_id, conversation_id
+        )
+
     except Exception as e:
         logging.error(f"Error in get_messages: {str(e)}")
         return error_response(f"Failed to load messages: {str(e)}", 500)
 
+
 # ─────────────────────────────────────────────────────────────
 # HELPER FUNCTION TO GET MESSAGES
 # ─────────────────────────────────────────────────────────────
-def fetch_messages(conversation, user, limit, offset):
+def fetch_messages(conversation, user, limit, offset, current_user_id, conversation_id):
     # ── Enrich messages with persistent read/delivered status ──────────────
     # For each message sent by the current user, check if other participants
     # have read past it using conversation_user_reads.last_read_at
@@ -449,7 +480,7 @@ def fetch_messages(conversation, user, limit, offset):
                     "SELECT last_read_at FROM conversation_user_reads "
                     "WHERE conversation_id = :cid AND user_id = :uid"
                 ),
-                {"cid": conversation_id, "uid": participant.id}
+                {"cid": conversation_id, "uid": participant.id},
             ).first()
             if row and row.last_read_at:
                 other_read_times[participant.id] = row.last_read_at
@@ -466,9 +497,12 @@ def fetch_messages(conversation, user, limit, offset):
 
             # Parse message time
             from datetime import datetime
+
             try:
                 if isinstance(msg_time_str, str):
-                    msg_time = datetime.fromisoformat(msg_time_str.replace("Z", "+00:00").replace("+00:00", ""))
+                    msg_time = datetime.fromisoformat(
+                        msg_time_str.replace("Z", "+00:00").replace("+00:00", "")
+                    )
                 else:
                     msg_time = msg_time_str
             except Exception:
@@ -476,8 +510,7 @@ def fetch_messages(conversation, user, limit, offset):
 
             # Check if any recipient has read at or after this message
             is_read = any(
-                read_time >= msg_time
-                for read_time in other_read_times.values()
+                read_time >= msg_time for read_time in other_read_times.values()
             )
 
             if is_read:
@@ -500,6 +533,7 @@ def fetch_messages(conversation, user, limit, offset):
         {"conversation": conversation.to_dict(for_user=user), "messages": messages}
     )
 
+
 # ─────────────────────────────────────────────────────────────
 # GET MESSAGES BY STARTUP ID (for startup-specific conversations)
 # ─────────────────────────────────────────────────────────────
@@ -512,13 +546,18 @@ def get_startup_messages(startup_id):
         offset = request.args.get("offset", 0, type=int)
 
         user = User.query.get(current_user_id)
-        conversation = ChatConversation.query.filter_by(parent_startup_id=startup_id).first()
+        conversation = ChatConversation.query.filter_by(
+            parent_startup_id=startup_id
+        ).first()
 
-        return fetch_messages(conversation, user, limit, offset)
+        return fetch_messages(
+            conversation, user, limit, offset, current_user_id, conversation.id
+        )
 
     except Exception as e:
         logging.error(f"Error in get_startup_messages: {str(e)}")
         return error_response(f"Failed to load startup messages: {str(e)}", 500)
+
 
 # ─────────────────────────────────────────────────────────────
 # SEND MESSAGE (conversation_id)
@@ -527,9 +566,9 @@ def get_startup_messages(startup_id):
 @jwt_required()
 def send_message(conversation_id):
     current_user_id = get_jwt_identity()
-    
+
     file_url = None
-    
+
     is_file_upload = "file" in request.files
 
     if is_file_upload:
@@ -542,12 +581,14 @@ def send_message(conversation_id):
 
         if not allowed_file(file.filename):
             return error_response(
-                f'File type not allowed. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}', 400
+                f'File type not allowed. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}',
+                400,
             )
 
         if not validate_file_size(file):
             return error_response(
-                f"File size exceeds maximum limit of {MAX_FILE_SIZE / (1024*1024)}MB", 400
+                f"File size exceeds maximum limit of {MAX_FILE_SIZE / (1024*1024)}MB",
+                400,
             )
 
         content = request.form.get("content", "Sent a file")
@@ -576,7 +617,9 @@ def send_message(conversation_id):
     try:
         sender_timezone = get_user_timezone(user)
         original_content = content
-        metadata_data = {} if is_file_upload else (data.get("metadata_data", {}) if data else {})
+        metadata_data = (
+            {} if is_file_upload else (data.get("metadata_data", {}) if data else {})
+        )
 
         time_pattern = r"\[(\d{1,2}:\d{2})\]"
         has_existing_placeholders = bool(re.search(time_pattern, original_content))
@@ -640,25 +683,25 @@ def send_message(conversation_id):
         # ════════════════════════════════════════════════════════════
         try:
             sender_name = get_user_full_name(current_user_id)
-            
+
             # Notify all participants except sender
             for participant in conversation.participants:
                 if int(participant.id) != int(current_user_id):
                     # Use appropriate notification based on conversation type
-                    if conversation.conversation_type == 'group':
+                    if conversation.conversation_type == "group":
                         notify_group_message(
                             user_id=participant.id,
                             sender_id=current_user_id,
                             sender_name=sender_name,
                             group_name=conversation.name or "Group Chat",
-                            message_id=message.id
+                            message_id=message.id,
                         )
-                    elif message_type == 'voice':
+                    elif message_type == "voice":
                         notify_voice_message_received(
                             user_id=participant.id,
                             sender_id=current_user_id,
                             sender_name=sender_name,
-                            message_id=message.id
+                            message_id=message.id,
                         )
                     else:
                         notify_new_message(
@@ -666,9 +709,9 @@ def send_message(conversation_id):
                             sender_id=current_user_id,
                             sender_name=sender_name,
                             message_id=message.id,
-                            conversation_id=conversation.id
+                            conversation_id=conversation.id,
                         )
-            
+
             # Handle @mentions in message content
             mentions = extract_mentions(original_content)
             for username in mentions:
@@ -681,9 +724,9 @@ def send_message(conversation_id):
                             mentioner_id=current_user_id,
                             mentioner_name=sender_name,
                             chat_name=conversation.name or "Direct Message",
-                            message_id=message.id
+                            message_id=message.id,
                         )
-                        
+
         except Exception as e:
             print(f"⚠️ Message notification failed: {e}")
 
@@ -736,7 +779,9 @@ def send_direct_message():
         conversation = (
             ChatConversation.query.join(conversation_participants)
             .filter(ChatConversation.conversation_type == "direct")
-            .filter(conversation_participants.c.user_id.in_([current_user_id, recipient_id]))
+            .filter(
+                conversation_participants.c.user_id.in_([current_user_id, recipient_id])
+            )
             .group_by(ChatConversation.id)
             .having(db.func.count(ChatConversation.id) == 2)
             .first()
@@ -746,7 +791,9 @@ def send_direct_message():
 
         if not conversation:
             is_new_conversation = True
-            conversation = ChatConversation(conversation_type="direct", created_by_id=current_user_id)
+            conversation = ChatConversation(
+                conversation_type="direct", created_by_id=current_user_id
+            )
             db.session.add(conversation)
             db.session.flush()
 
@@ -762,7 +809,7 @@ def send_direct_message():
         )
 
         db.session.add(message)
-        
+
         # ════════════════════════════════════════════════════════════
         # ✨ NOTIFICATION: Direct Message (4.6)
         # ════════════════════════════════════════════════════════════
@@ -773,11 +820,11 @@ def send_direct_message():
                 sender_id=current_user_id,
                 sender_name=sender_name,
                 message_id=message.id,
-                conversation_id=conversation.id
+                conversation_id=conversation.id,
             )
         except Exception as e:
             print(f"⚠️ Direct message notification failed: {e}")
-        
+
         conversation.updated_at = datetime.utcnow()
         conversation.increment_unread_count(current_user_id)
         db.session.commit()
@@ -833,18 +880,23 @@ def send_direct_message():
 # ─────────────────────────────────────────────────────────────
 # EDIT MESSAGE
 # ─────────────────────────────────────────────────────────────
-@chat_bp.route("/conversations/<int:conversation_id>/messages/<int:message_id>", methods=["PUT"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/messages/<int:message_id>", methods=["PUT"]
+)
 @jwt_required()
 def edit_message(conversation_id, message_id):
     current_user_id = get_jwt_identity()
     data = request.get_json() or {}
 
-    content = data.get('content', '').strip()
-    file_url = data.get('file_url')
+    content = data.get("content", "").strip()
+    file_url = data.get("file_url")
 
     # Only error if BOTH are missing
     if not content and not file_url:
-        return jsonify({"error": "Message must contain text or a file", "success": False}), 400
+        return (
+            jsonify({"error": "Message must contain text or a file", "success": False}),
+            400,
+        )
 
     try:
         message = ChatMessage.query.get(message_id)
@@ -873,7 +925,9 @@ def edit_message(conversation_id, message_id):
         if SOCKET_ENABLED:
             emit_message_edited(conversation_id, response_data)
 
-        return success_response({"message": response_data}, "Message edited successfully")
+        return success_response(
+            {"message": response_data}, "Message edited successfully"
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -973,7 +1027,9 @@ def react_to_message(conversation_id, message_id):
 # ─────────────────────────────────────────────────────────────
 # DELETE MESSAGE (with delete for everyone / delete for me)
 # ─────────────────────────────────────────────────────────────
-@chat_bp.route("/conversations/<int:conversation_id>/messages/<int:message_id>", methods=["DELETE"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/messages/<int:message_id>", methods=["DELETE"]
+)
 @jwt_required()
 def delete_message(conversation_id, message_id):
     current_user_id = get_jwt_identity()
@@ -981,8 +1037,8 @@ def delete_message(conversation_id, message_id):
     try:
         # Get delete_type from request body
         data = request.get_json(silent=True) or {}
-        delete_type = data.get('delete_type', 'everyone')  # 'everyone' or 'me'
-        
+        delete_type = data.get("delete_type", "everyone")  # 'everyone' or 'me'
+
         message = ChatMessage.query.get(message_id)
         conversation = ChatConversation.query.get(conversation_id)
 
@@ -997,26 +1053,29 @@ def delete_message(conversation_id, message_id):
             return error_response("You can only delete your own messages", 403)
 
         # For "delete for me" - just return success, frontend handles hiding locally
-        if delete_type == 'me':
-            return success_response({
-                "message_id": message_id, 
-                "delete_type": "me"
-            }, "Message hidden for you")
+        if delete_type == "me":
+            return success_response(
+                {"message_id": message_id, "delete_type": "me"},
+                "Message hidden for you",
+            )
 
         # For "delete for everyone" - check 1-hour limit
         from datetime import timedelta
+
         one_hour_ago = datetime.utcnow() - timedelta(hours=1)
-        
+
         if message.created_at < one_hour_ago:
             return error_response(
-                "Messages can only be deleted for everyone within 1 hour of sending. You can still delete for yourself.", 
-                400
+                "Messages can only be deleted for everyone within 1 hour of sending. You can still delete for yourself.",
+                400,
             )
 
         # Delete attached file if exists
         if message.file_url:
             try:
-                file_path = os.path.join(UPLOAD_FOLDER, os.path.basename(message.file_url))
+                file_path = os.path.join(
+                    UPLOAD_FOLDER, os.path.basename(message.file_url)
+                )
                 if os.path.exists(file_path):
                     os.remove(file_path)
             except Exception as e:
@@ -1031,10 +1090,10 @@ def delete_message(conversation_id, message_id):
         if SOCKET_ENABLED:
             emit_message_deleted(conversation_id, message_id)
 
-        return success_response({
-            "message_id": message_id,
-            "delete_type": "everyone"
-        }, "Message deleted successfully")
+        return success_response(
+            {"message_id": message_id, "delete_type": "everyone"},
+            "Message deleted successfully",
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -1100,7 +1159,9 @@ def get_conversation_files(conversation_id):
                 }
             )
 
-        return success_response({"files": files, "total_count": len(files)}, "Files retrieved successfully")
+        return success_response(
+            {"files": files, "total_count": len(files)}, "Files retrieved successfully"
+        )
 
     except Exception as e:
         logging.error(f"Failed to get conversation files: {str(e)}")
@@ -1157,7 +1218,11 @@ def add_participant(conversation_id):
 
         if SOCKET_ENABLED:
             emit_new_message(conversation_id, notif_message.to_dict())
-            emit_to_user(user_id, "added_to_conversation", {"conversation": conversation.to_dict(for_user=user)})
+            emit_to_user(
+                user_id,
+                "added_to_conversation",
+                {"conversation": conversation.to_dict(for_user=user)},
+            )
 
         # ─────────────────────────────────────────────────────────
         # ✨ NOTIFICATION: Added to Group Chat
@@ -1183,14 +1248,19 @@ def add_participant(conversation_id):
                 db.session.commit()
 
                 if SOCKET_ENABLED:
-                    emit_notification(user_id, notification.to_dict())  # ✅ FIX: emit to user_id
+                    emit_notification(
+                        user_id, notification.to_dict()
+                    )  # ✅ FIX: emit to user_id
 
             except Exception as e:
                 logging.warning(f"⚠️ Group add notification failed: {e}")
                 db.session.rollback()
 
         return success_response(
-            {"message": "Participant added successfully", "notification": notif_message.to_dict()}
+            {
+                "message": "Participant added successfully",
+                "notification": notif_message.to_dict(),
+            }
         )
 
     except Exception as e:
@@ -1202,7 +1272,10 @@ def add_participant(conversation_id):
 # ─────────────────────────────────────────────────────────────
 # REMOVE PARTICIPANT
 # ─────────────────────────────────────────────────────────────
-@chat_bp.route("/conversations/<int:conversation_id>/participants/<int:user_id>", methods=["DELETE"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/participants/<int:user_id>",
+    methods=["DELETE"],
+)
 @jwt_required()
 def remove_participant(conversation_id, user_id):
     try:
@@ -1213,7 +1286,9 @@ def remove_participant(conversation_id, user_id):
             return error_response("Conversation not found", 404)
 
         if conversation.created_by_id != current_user_id:
-            return error_response("Only conversation creator can remove participants", 403)
+            return error_response(
+                "Only conversation creator can remove participants", 403
+            )
 
         if user_id == conversation.created_by_id:
             return error_response("Cannot remove conversation creator", 400)
@@ -1255,17 +1330,25 @@ def remove_participant(conversation_id, user_id):
 
         if SOCKET_ENABLED:
             emit_new_message(conversation_id, notif_message.to_dict())
-            emit_to_user(user_id, "removed_from_conversation", {"conversation_id": conversation_id})
+            emit_to_user(
+                user_id,
+                "removed_from_conversation",
+                {"conversation_id": conversation_id},
+            )
 
         return success_response(
-            {"message": "Participant removed successfully", "notification": notif_message.to_dict()}
+            {
+                "message": "Participant removed successfully",
+                "notification": notif_message.to_dict(),
+            }
         )
 
     except Exception as e:
         db.session.rollback()
         logging.error(f"Failed to remove participant: {str(e)}")
         return error_response(f"Failed to remove participant: {str(e)}", 500)
-    
+
+
 # ─────────────────────────────────────────────────────────────
 # LEAVE GROUP CHAT (user removes themselves)
 # ─────────────────────────────────────────────────────────────
@@ -1282,7 +1365,9 @@ def leave_conversation(conversation_id):
 
         # Can't leave direct conversations
         if conversation.conversation_type == "direct":
-            return error_response("Cannot leave a direct conversation. Use delete instead.", 400)
+            return error_response(
+                "Cannot leave a direct conversation. Use delete instead.", 400
+            )
 
         # Can't leave general chat
         if conversation.conversation_type == "general":
@@ -1297,12 +1382,14 @@ def leave_conversation(conversation_id):
 
         # If user is the creator and there are other participants, transfer ownership
         if conversation.created_by_id == current_user_id:
-            other_participants = [p for p in conversation.participants if p.id != current_user_id]
+            other_participants = [
+                p for p in conversation.participants if p.id != current_user_id
+            ]
             if other_participants:
                 # Transfer ownership to the first other participant
                 new_owner = other_participants[0]
                 conversation.created_by_id = new_owner.id
-                
+
                 # Update their role to admin
                 stmt = (
                     conversation_participants.update()
@@ -1338,11 +1425,15 @@ def leave_conversation(conversation_id):
         # Emit socket events
         if SOCKET_ENABLED:
             emit_new_message(conversation_id, notif_message.to_dict())
-            emit_to_user(current_user_id, "left_conversation", {"conversation_id": conversation_id})
+            emit_to_user(
+                current_user_id,
+                "left_conversation",
+                {"conversation_id": conversation_id},
+            )
 
         return success_response(
             {"message": "You have left the conversation"},
-            "Left conversation successfully"
+            "Left conversation successfully",
         )
 
     except Exception as e:
@@ -1381,8 +1472,7 @@ def archive_conversation(conversation_id):
         db.session.commit()
 
         return success_response(
-            {"message": "Conversation archived"},
-            "Conversation archived successfully"
+            {"message": "Conversation archived"}, "Conversation archived successfully"
         )
 
     except Exception as e:
@@ -1415,13 +1505,14 @@ def unarchive_conversation(conversation_id):
 
         return success_response(
             {"message": "Conversation unarchived"},
-            "Conversation unarchived successfully"
+            "Conversation unarchived successfully",
         )
 
     except Exception as e:
         db.session.rollback()
         logging.error(f"Failed to unarchive conversation: {str(e)}")
         return error_response(f"Failed to unarchive conversation: {str(e)}", 500)
+
 
 # ─────────────────────────────────────────────────────────────
 # PIN / UNPIN CONVERSATION  (per-user, persists in DB)
@@ -1440,18 +1531,22 @@ def pin_conversation(conversation_id):
             db.text("""UPDATE conversation_participants
                        SET is_pinned = 1, pinned_at = :now
                        WHERE conversation_id = :cid AND user_id = :uid"""),
-            {'cid': conversation_id, 'uid': current_user_id, 'now': datetime.utcnow()}
+            {"cid": conversation_id, "uid": current_user_id, "now": datetime.utcnow()},
         )
         db.session.commit()
 
         # Emit to user so ChatDock + ChatPage both update in real-time
         if SOCKET_ENABLED:
-            emit_to_user(current_user_id, "conversation_pinned", {
-                "conversation_id": conversation_id,
-                "is_pinned": True
-            })
+            emit_to_user(
+                current_user_id,
+                "conversation_pinned",
+                {"conversation_id": conversation_id, "is_pinned": True},
+            )
 
-        return success_response({"conversation_id": conversation_id, "is_pinned": True}, "Conversation pinned")
+        return success_response(
+            {"conversation_id": conversation_id, "is_pinned": True},
+            "Conversation pinned",
+        )
     except Exception as e:
         logging.error(f"Pin conversation failed: {e}")
         db.session.rollback()
@@ -1472,17 +1567,21 @@ def unpin_conversation(conversation_id):
             db.text("""UPDATE conversation_participants
                        SET is_pinned = 0, pinned_at = NULL
                        WHERE conversation_id = :cid AND user_id = :uid"""),
-            {'cid': conversation_id, 'uid': current_user_id}
+            {"cid": conversation_id, "uid": current_user_id},
         )
         db.session.commit()
 
         if SOCKET_ENABLED:
-            emit_to_user(current_user_id, "conversation_pinned", {
-                "conversation_id": conversation_id,
-                "is_pinned": False
-            })
+            emit_to_user(
+                current_user_id,
+                "conversation_pinned",
+                {"conversation_id": conversation_id, "is_pinned": False},
+            )
 
-        return success_response({"conversation_id": conversation_id, "is_pinned": False}, "Conversation unpinned")
+        return success_response(
+            {"conversation_id": conversation_id, "is_pinned": False},
+            "Conversation unpinned",
+        )
     except Exception as e:
         logging.error(f"Unpin conversation failed: {e}")
         db.session.rollback()
@@ -1512,7 +1611,10 @@ def delete_conversation(conversation_id):
 
         # Can't delete a group — must leave first
         if conversation.conversation_type == "group":
-            return error_response("You must leave this group before deleting it. Use Leave Group first.", 403)
+            return error_response(
+                "You must leave this group before deleting it. Use Leave Group first.",
+                403,
+            )
 
         # Soft-hide only — stay participant so history is preserved and
         # the conversation reappears when a new message arrives
@@ -1520,7 +1622,11 @@ def delete_conversation(conversation_id):
 
         # Emit socket event
         if SOCKET_ENABLED:
-            emit_to_user(current_user_id, "conversation_deleted", {"conversation_id": conversation_id})
+            emit_to_user(
+                current_user_id,
+                "conversation_deleted",
+                {"conversation_id": conversation_id},
+            )
 
         return success_response({"message": "Conversation removed from your list"})
 
@@ -1536,7 +1642,10 @@ def delete_conversation(conversation_id):
 @chat_bp.route("/setup-general-chat", methods=["POST"])
 @jwt_required()
 def setup_general_chat():
-    from app.utils.chat_utils import get_or_create_general_chat as _get_or_create, sync_all_users_to_general_chat
+    from app.utils.chat_utils import (
+        get_or_create_general_chat as _get_or_create,
+        sync_all_users_to_general_chat,
+    )
 
     current_user_id = get_jwt_identity()
 
@@ -1548,10 +1657,14 @@ def setup_general_chat():
         "General chat setup complete!",
     )
 
+
 # ─────────────────────────────────────────────────────────────
 # FEATURE 3: STAR / UNSTAR A MESSAGE
 # ─────────────────────────────────────────────────────────────
-@chat_bp.route("/conversations/<int:conversation_id>/messages/<int:message_id>/star", methods=["POST"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/messages/<int:message_id>/star",
+    methods=["POST"],
+)
 @jwt_required()
 def star_message(conversation_id, message_id):
     """Star a message for the current user."""
@@ -1569,18 +1682,24 @@ def star_message(conversation_id, message_id):
 
         # Upsert into message_stars
         existing = db.session.execute(
-            db.text("SELECT id FROM message_stars WHERE user_id = :uid AND message_id = :mid"),
-            {"uid": current_user_id, "mid": message_id}
+            db.text(
+                "SELECT id FROM message_stars WHERE user_id = :uid AND message_id = :mid"
+            ),
+            {"uid": current_user_id, "mid": message_id},
         ).fetchone()
 
         if not existing:
             db.session.execute(
-                db.text("INSERT INTO message_stars (user_id, message_id, created_at) VALUES (:uid, :mid, :now)"),
-                {"uid": current_user_id, "mid": message_id, "now": datetime.utcnow()}
+                db.text(
+                    "INSERT INTO message_stars (user_id, message_id, created_at) VALUES (:uid, :mid, :now)"
+                ),
+                {"uid": current_user_id, "mid": message_id, "now": datetime.utcnow()},
             )
             db.session.commit()
 
-        return success_response({"message_id": message_id, "is_starred": True}, "Message starred")
+        return success_response(
+            {"message_id": message_id, "is_starred": True}, "Message starred"
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -1588,18 +1707,25 @@ def star_message(conversation_id, message_id):
         return error_response(str(e), 500)
 
 
-@chat_bp.route("/conversations/<int:conversation_id>/messages/<int:message_id>/star", methods=["DELETE"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/messages/<int:message_id>/star",
+    methods=["DELETE"],
+)
 @jwt_required()
 def unstar_message(conversation_id, message_id):
     """Unstar a message."""
     try:
         current_user_id = get_jwt_identity()
         db.session.execute(
-            db.text("DELETE FROM message_stars WHERE user_id = :uid AND message_id = :mid"),
-            {"uid": current_user_id, "mid": message_id}
+            db.text(
+                "DELETE FROM message_stars WHERE user_id = :uid AND message_id = :mid"
+            ),
+            {"uid": current_user_id, "mid": message_id},
         )
         db.session.commit()
-        return success_response({"message_id": message_id, "is_starred": False}, "Message unstarred")
+        return success_response(
+            {"message_id": message_id, "is_starred": False}, "Message unstarred"
+        )
     except Exception as e:
         db.session.rollback()
         return error_response(str(e), 500)
@@ -1619,9 +1745,17 @@ def get_starred_messages(conversation_id):
                 WHERE m.conversation_id = :cid AND s.user_id = :uid
                 ORDER BY s.created_at DESC
             """),
-            {"cid": conversation_id, "uid": current_user_id}
+            {"cid": conversation_id, "uid": current_user_id},
         ).fetchall()
-        messages = [{"id": r.id, "content": r.content, "created_at": str(r.created_at), "sender_id": r.sender_id} for r in rows]
+        messages = [
+            {
+                "id": r.id,
+                "content": r.content,
+                "created_at": str(r.created_at),
+                "sender_id": r.sender_id,
+            }
+            for r in rows
+        ]
         return success_response({"messages": messages}, "Starred messages fetched")
     except Exception as e:
         return error_response(str(e), 500)
@@ -1630,7 +1764,10 @@ def get_starred_messages(conversation_id):
 # ─────────────────────────────────────────────────────────────
 # FEATURE 3: PIN / UNPIN A MESSAGE
 # ─────────────────────────────────────────────────────────────
-@chat_bp.route("/conversations/<int:conversation_id>/messages/<int:message_id>/pin", methods=["POST"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/messages/<int:message_id>/pin",
+    methods=["POST"],
+)
 @jwt_required()
 def pin_message(conversation_id, message_id):
     """Pin a message in a conversation (admins or any participant)."""
@@ -1646,8 +1783,10 @@ def pin_message(conversation_id, message_id):
             return error_response("Message not found", 404)
 
         existing = db.session.execute(
-            db.text("SELECT id FROM pinned_messages WHERE conversation_id = :cid AND message_id = :mid"),
-            {"cid": conversation_id, "mid": message_id}
+            db.text(
+                "SELECT id FROM pinned_messages WHERE conversation_id = :cid AND message_id = :mid"
+            ),
+            {"cid": conversation_id, "mid": message_id},
         ).fetchone()
 
         if not existing:
@@ -1656,11 +1795,18 @@ def pin_message(conversation_id, message_id):
                     INSERT INTO pinned_messages (conversation_id, message_id, pinned_by, created_at)
                     VALUES (:cid, :mid, :uid, :now)
                 """),
-                {"cid": conversation_id, "mid": message_id, "uid": current_user_id, "now": datetime.utcnow()}
+                {
+                    "cid": conversation_id,
+                    "mid": message_id,
+                    "uid": current_user_id,
+                    "now": datetime.utcnow(),
+                },
             )
             db.session.commit()
 
-        return success_response({"message_id": message_id, "is_pinned": True}, "Message pinned")
+        return success_response(
+            {"message_id": message_id, "is_pinned": True}, "Message pinned"
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -1668,18 +1814,25 @@ def pin_message(conversation_id, message_id):
         return error_response(str(e), 500)
 
 
-@chat_bp.route("/conversations/<int:conversation_id>/messages/<int:message_id>/pin", methods=["DELETE"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/messages/<int:message_id>/pin",
+    methods=["DELETE"],
+)
 @jwt_required()
 def unpin_message(conversation_id, message_id):
     """Unpin a message."""
     try:
         current_user_id = get_jwt_identity()
         db.session.execute(
-            db.text("DELETE FROM pinned_messages WHERE conversation_id = :cid AND message_id = :mid"),
-            {"cid": conversation_id, "mid": message_id}
+            db.text(
+                "DELETE FROM pinned_messages WHERE conversation_id = :cid AND message_id = :mid"
+            ),
+            {"cid": conversation_id, "mid": message_id},
         )
         db.session.commit()
-        return success_response({"message_id": message_id, "is_pinned": False}, "Message unpinned")
+        return success_response(
+            {"message_id": message_id, "is_pinned": False}, "Message unpinned"
+        )
     except Exception as e:
         db.session.rollback()
         return error_response(str(e), 500)
@@ -1703,9 +1856,18 @@ def get_pinned_messages(conversation_id):
                 WHERE p.conversation_id = :cid
                 ORDER BY p.created_at DESC
             """),
-            {"cid": conversation_id}
+            {"cid": conversation_id},
         ).fetchall()
-        messages = [{"id": r.id, "content": r.content, "created_at": str(r.created_at), "sender_id": r.sender_id, "pinned_by": r.pinned_by} for r in rows]
+        messages = [
+            {
+                "id": r.id,
+                "content": r.content,
+                "created_at": str(r.created_at),
+                "sender_id": r.sender_id,
+                "pinned_by": r.pinned_by,
+            }
+            for r in rows
+        ]
         return success_response({"messages": messages}, "Pinned messages fetched")
     except Exception as e:
         return error_response(str(e), 500)
@@ -1714,7 +1876,10 @@ def get_pinned_messages(conversation_id):
 # ─────────────────────────────────────────────────────────────
 # FEATURE 3: SAVE / REMOVE MESSAGE AS TASK
 # ─────────────────────────────────────────────────────────────
-@chat_bp.route("/conversations/<int:conversation_id>/messages/<int:message_id>/task", methods=["POST"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/messages/<int:message_id>/task",
+    methods=["POST"],
+)
 @jwt_required()
 def save_message_task(conversation_id, message_id):
     """Save a message as a task for the current user."""
@@ -1734,14 +1899,23 @@ def save_message_task(conversation_id, message_id):
 
         # Upsert
         existing = db.session.execute(
-            db.text("SELECT id FROM message_tasks WHERE user_id = :uid AND message_id = :mid"),
-            {"uid": current_user_id, "mid": message_id}
+            db.text(
+                "SELECT id FROM message_tasks WHERE user_id = :uid AND message_id = :mid"
+            ),
+            {"uid": current_user_id, "mid": message_id},
         ).fetchone()
 
         if existing:
             db.session.execute(
-                db.text("UPDATE message_tasks SET due_date = :dd, note = :note WHERE user_id = :uid AND message_id = :mid"),
-                {"dd": due_date, "note": note, "uid": current_user_id, "mid": message_id}
+                db.text(
+                    "UPDATE message_tasks SET due_date = :dd, note = :note WHERE user_id = :uid AND message_id = :mid"
+                ),
+                {
+                    "dd": due_date,
+                    "note": note,
+                    "uid": current_user_id,
+                    "mid": message_id,
+                },
             )
         else:
             db.session.execute(
@@ -1749,11 +1923,19 @@ def save_message_task(conversation_id, message_id):
                     INSERT INTO message_tasks (user_id, message_id, conversation_id, due_date, note, created_at)
                     VALUES (:uid, :mid, :cid, :dd, :note, :now)
                 """),
-                {"uid": current_user_id, "mid": message_id, "cid": conversation_id,
-                 "dd": due_date, "note": note, "now": datetime.utcnow()}
+                {
+                    "uid": current_user_id,
+                    "mid": message_id,
+                    "cid": conversation_id,
+                    "dd": due_date,
+                    "note": note,
+                    "now": datetime.utcnow(),
+                },
             )
         db.session.commit()
-        return success_response({"message_id": message_id, "is_task": True}, "Task saved")
+        return success_response(
+            {"message_id": message_id, "is_task": True}, "Task saved"
+        )
 
     except Exception as e:
         db.session.rollback()
@@ -1761,18 +1943,25 @@ def save_message_task(conversation_id, message_id):
         return error_response(str(e), 500)
 
 
-@chat_bp.route("/conversations/<int:conversation_id>/messages/<int:message_id>/task", methods=["DELETE"])
+@chat_bp.route(
+    "/conversations/<int:conversation_id>/messages/<int:message_id>/task",
+    methods=["DELETE"],
+)
 @jwt_required()
 def remove_message_task(conversation_id, message_id):
     """Remove a message task."""
     try:
         current_user_id = get_jwt_identity()
         db.session.execute(
-            db.text("DELETE FROM message_tasks WHERE user_id = :uid AND message_id = :mid"),
-            {"uid": current_user_id, "mid": message_id}
+            db.text(
+                "DELETE FROM message_tasks WHERE user_id = :uid AND message_id = :mid"
+            ),
+            {"uid": current_user_id, "mid": message_id},
         )
         db.session.commit()
-        return success_response({"message_id": message_id, "is_task": False}, "Task removed")
+        return success_response(
+            {"message_id": message_id, "is_task": False}, "Task removed"
+        )
     except Exception as e:
         db.session.rollback()
         return error_response(str(e), 500)
@@ -1793,13 +1982,21 @@ def get_my_tasks():
                 WHERE t.user_id = :uid
                 ORDER BY t.created_at DESC
             """),
-            {"uid": current_user_id}
+            {"uid": current_user_id},
         ).fetchall()
-        tasks = [{
-            "id": r.id, "message_id": r.message_id, "conversation_id": r.conversation_id,
-            "due_date": str(r.due_date) if r.due_date else None, "note": r.note,
-            "created_at": str(r.created_at), "message_content": r.content, "sender_id": r.sender_id
-        } for r in rows]
+        tasks = [
+            {
+                "id": r.id,
+                "message_id": r.message_id,
+                "conversation_id": r.conversation_id,
+                "due_date": str(r.due_date) if r.due_date else None,
+                "note": r.note,
+                "created_at": str(r.created_at),
+                "message_content": r.content,
+                "sender_id": r.sender_id,
+            }
+            for r in rows
+        ]
         return success_response({"tasks": tasks}, "Tasks fetched")
     except Exception as e:
         return error_response(str(e), 500)
