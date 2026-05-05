@@ -1,7 +1,9 @@
 from datetime import datetime, time
 from app.extensions import db
+
 from datetime import datetime, date, time
 from extensions import db
+
 
 
 class Attendance(db.Model):
@@ -26,6 +28,7 @@ class Attendance(db.Model):
     )
 
     def calculate_status(self, late_threshold_hour=9, late_threshold_minute=0):
+
         id = db.Column(db.Integer, primary_key=True)
         user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
         workspace_id = db.Column(db.Integer, db.ForeignKey('workspaces.id'), nullable=False)
@@ -54,6 +57,7 @@ class Attendance(db.Model):
           - clock-in at/before threshold -> present
         Must be called before every insert so status is never unset.
         """
+
         if not self.clock_in_time:
             self.status = 'absent'
             return
@@ -763,3 +767,5 @@ def bulk_mark_absent():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+        }
+
