@@ -767,5 +767,3 @@ def bulk_mark_absent():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-        }
-
