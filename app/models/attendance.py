@@ -95,7 +95,8 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, date
 from sqlalchemy import and_, func
-from app.models import db, Attendance, User, Workspace, Alert, Holiday
+from app.models import Attendance, User, Workspace, Alert, Holiday
+from app.extensions import db
 from app import role_required
 
 attendance_bp = Blueprint('attendance', __name__, url_prefix='/api/attendance')
