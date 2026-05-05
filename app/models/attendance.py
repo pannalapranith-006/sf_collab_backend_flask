@@ -1,10 +1,6 @@
 from datetime import datetime, time
 from app.extensions import db
 
-from datetime import datetime, date, time
-from app.extensions import db
-
-
 
 class Attendance(db.Model):
     __tablename__ = 'attendance'
@@ -99,7 +95,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime, date
 from sqlalchemy import and_, func
-from models import db, Attendance, User, Workspace, Alert, Holiday
+from app.models import db, Attendance, User, Workspace, Alert, Holiday
 from app import role_required
 
 attendance_bp = Blueprint('attendance', __name__, url_prefix='/api/attendance')
@@ -408,7 +404,7 @@ def workspace_overview():
         # attendance is not expected on this day
         holiday = _get_holiday(workspace_id, target_date_obj)
 
-        from models.workspace import WorkspaceUser
+        from app.models.workspace import WorkspaceUser
         workspace_users = db.session.query(User, WorkspaceUser).join(
             WorkspaceUser, User.id == WorkspaceUser.user_id
         ).filter(WorkspaceUser.workspace_id == workspace_id).all()
@@ -493,7 +489,7 @@ def workspace_report():
         if start > end:
             return jsonify({'error': 'start_date must be before end_date'}), 400
 
-        from models.workspace import WorkspaceUser
+        from app.models.workspace import WorkspaceUser
         workspace_users = WorkspaceUser.query.filter_by(workspace_id=workspace_id).all()
         user_ids = [wu.user_id for wu in workspace_users]
 
@@ -627,7 +623,7 @@ def admin_mark_attendance():
         if err:
             return err
 
-        from models.workspace import WorkspaceUser
+        from app.models.workspace import WorkspaceUser
         if not WorkspaceUser.query.filter_by(user_id=data['user_id'], workspace_id=workspace_id).first():
             return jsonify({'error': 'User is not a member of this workspace'}), 403
 
@@ -720,7 +716,7 @@ def bulk_mark_absent():
                 'marked_absent': 0
             }), 200
 
-        from models.workspace import WorkspaceUser
+        from app.models.workspace import WorkspaceUser
         workspace_users = WorkspaceUser.query.filter_by(workspace_id=workspace_id).all()
         user_ids = [wu.user_id for wu in workspace_users]
 
