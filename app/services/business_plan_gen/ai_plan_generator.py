@@ -1,20 +1,6 @@
-from groq import Groq
-import os
 import re
 
-
-
-_client = None
-
-def get_groq_client():
-    global _client
-    if _client is None:
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            return None
-        _client = Groq(api_key=api_key)
-    return _client
-
+from app.services.ai_core.ai_service import AIService
 
 
 SECTION_PROMPTS = {
@@ -108,39 +94,44 @@ def normalize_inputs(inputs: dict) -> dict:
 
 
 def generate_section(section_type, inputs, existing_content=None, action="generate"):
+
     prompt_template = SECTION_PROMPTS.get(section_type)
 
     if not prompt_template:
         raise ValueError("Invalid section type")
+
     inputs = normalize_inputs(inputs)
+
     base_prompt = prompt_template.format(**inputs)
 
     if action == "rewrite" and existing_content:
-        base_prompt = f"""
-Rewrite the following content professionally:
-
-{existing_content}
-"""
+        base_prompt = f"Rewrite the following content professionally:\n\n{existing_content}"
 
     elif action == "expand" and existing_content:
-        base_prompt = f"""
-Expand the following content with more detail:
+        base_prompt = f"Expand the following content with more detail:\n\n{existing_content}"
 
-{existing_content}
-""" 
-    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    base_prompt = f"""
+Generate a professional business plan section.
 
+Rules:
+- No illegal or unethical business practices
+- No unrealistic financial guarantees
+- Focus on practical startup advice
 
-    response = client.chat.completions.create(
-        model="qwen/qwen3-32b",
-        messages=[
-            {"role": "system", "content": "You are a professional startup business consultant."},
-            {"role": "user", "content": base_prompt}
-        ],
+Request:
+{base_prompt}
+"""
+
+    if len(base_prompt) > 5000:
+        raise ValueError("Input too large")
+
+    result = AIService.generate(
+        feature="business_plan",
+        user_input=base_prompt,
         temperature=0.6,
         max_tokens=1200
     )
 
-    raw_output = response.choices[0].message.content
-    clean_output = strip_thinking(raw_output)
-    return clean_output
+    response_text = result.get("response", "")
+
+    return strip_thinking(response_text)

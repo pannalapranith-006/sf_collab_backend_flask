@@ -1,5 +1,5 @@
 from app.services.business_plan_gen.ai_improvements_map import IMPROVEMENT_MAP
-from app.services.ai_plan_generator import generate_section
+from app.services.business_plan_gen.ai_plan_generator import generate_section
 from app.extensions import db
 from app.models.planSection import PlanSection
 

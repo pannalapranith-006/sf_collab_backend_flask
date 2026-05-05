@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, send_file
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from app.models.startup import Startup
 from app.models.startup_document import StartupDocument
 from app.models.startUpMember import StartupMember
@@ -232,8 +232,16 @@ def get_startup(startup_id):
     if current_user_id:
         startup.increment_views(current_user_id)
 
+    # get_current_user_startup_role calls get_jwt_identity() internally.
+    # This route has no @jwt_required, so we must set up the JWT context
+    # manually as optional — no token = identity stays None, no crash.
+    try:
+        verify_jwt_in_request(optional=True)
+    except Exception:
+        pass
+
     role = get_current_user_startup_role(startup_id)
-    
+
     if role == 'none' or not role:
         # Very limited view for normal logged-in users
         data = {
@@ -1614,7 +1622,9 @@ def get_my_startup_invitation_options(startup_id):
 def get_my_startup_invitation(startup_id):
     """
     Get the current user's pending invitation for a specific startup.
+
     This is for regular (non-admin) users to check if they have been invited.
+
     No manager role required — users can only see their own invitation.
     """
     current_user_id = get_jwt_identity()

@@ -35,7 +35,7 @@ payment_bp = Blueprint("payments", __name__, url_prefix="/payments")
 # Finds all boosts whose expires_at has passed and marks them inactive.
 # This keeps the discovery/ranking system accurate without manual cleanup.
 # =============================================================================
-@celery.task(name="app.routes.payment_routes.expire_visibility_boosts")
+# @celery.task(name="app.routes.payment_routes.expire_visibility_boosts")
 def expire_visibility_boosts():
     """
     Background task: mark expired VisibilityBoosts as inactive.

@@ -8,7 +8,7 @@ from app.utils.helper import success_response, error_response
 from datetime import datetime
 from app.services.business_plan_gen.financial_calculator import calculate_financials
 from app.services.pdf_exporter import export_business_plan_pdf
-from app.services.ai_plan_generator import generate_section
+from app.services.business_plan_gen.ai_plan_generator import generate_section
 from app.services.docx_exporter import export_business_plan_docx
 from app.services.business_plan_gen.financial_analyzer import analyze_financials
 from app.services.business_plan_gen.plan_versioning import create_plan_version

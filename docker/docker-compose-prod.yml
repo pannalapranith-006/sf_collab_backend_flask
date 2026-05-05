@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # ===== API SERVICE =====
   api:
-    image: ivandagomez/sforger_api:latest
+    build: ..
     container_name: sfcollab-api
     ports:
       - "5000:5000"

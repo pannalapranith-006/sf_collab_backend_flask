@@ -12,14 +12,20 @@ import os
 
 oauth = OAuth()
 jwt = JWTManager()
-cors = CORS()
+
+# ✅ FIXED CORS (handles preflight + all routes)
+cors = CORS(
+    resources={r"/*": {"origins": "*"}},
+    supports_credentials=True
+)
+
 db = SQLAlchemy()
 migrate = Migrate()
 sess = Session()
 
 socketio = SocketIO(
     async_mode="gevent",
-    cors_allowed_origins=Config.CORS_ORIGINS,
+    cors_allowed_origins="*",  # ✅ allow all for now (safe for testing)
     ping_timeout=60,
     ping_interval=25,
     logger=True,
@@ -27,39 +33,21 @@ socketio = SocketIO(
 )
 
 # ---------------------------------------------------------------------------
-# Celery — used for background tasks (e.g. auto-expiring visibility boosts)
-# Broker and result backend are configured via REDIS_URL in config / .env
+# Celery — currently NOT used (kept for compatibility, not initialized)
 # ---------------------------------------------------------------------------
 def make_celery(app=None):
-    """
-    Create and configure the Celery instance.
-    Call this inside your Flask app factory after app.config is loaded.
-
-    Usage in app factory:
-        from app.extensions import celery, make_celery
-        make_celery(app)
-    """
     celery.conf.update(
         broker_url=os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0")),
         result_backend=os.getenv("CELERY_RESULT_BACKEND", os.getenv("REDIS_URL", "redis://localhost:6379/0")),
-        beat_schedule={
-            # Run every 10 minutes to expire finished visibility boosts
-            "expire-visibility-boosts": {
-                "task": "app.routes.payment_routes.expire_visibility_boosts",
-                "schedule": 600,  # seconds
-            },
-        },
         timezone="UTC",
     )
     if app:
-        # Push Flask app context so tasks can use db, models etc.
         class ContextTask(celery.Task):
             def __call__(self, *args, **kwargs):
                 with app.app_context():
                     return self.run(*args, **kwargs)
         celery.Task = ContextTask
     return celery
-
 
 celery = Celery(__name__)
 
@@ -79,7 +67,7 @@ def user_or_ip():
 limiter = Limiter(
     key_func=user_or_ip,
     default_limits=["1000 per day"],
-    storage_uri=os.getenv("REDIS_URL", "memory://"), # Changed default to memory://
+    storage_uri=os.getenv("REDIS_URL", "memory://"),
     storage_options={"socket_connect_timeout": 1},
     strategy="fixed-window",
 )

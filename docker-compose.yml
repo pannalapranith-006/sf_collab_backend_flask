@@ -1,0 +1,63 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sfcollab-backend
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["/bin/bash", "/app/docker/entrypoint.sh"]
+    networks:
+      - sfcollab_net
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0.35
+    container_name: sfcollab-mysql
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sfcollab_pass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-defaultdb}
+      MYSQL_USER: ${MYSQL_USER:-sfcollab}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sfcollab_pass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysqldata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sfcollab_net
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: sfcollab-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sfcollab_net
+    restart: unless-stopped
+
+volumes:
+  mysqldata:
+
+networks:
+  sfcollab_net:
+    driver: bridge

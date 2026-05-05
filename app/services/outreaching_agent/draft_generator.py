@@ -1,7 +1,5 @@
-import os
-from groq import Groq
+from app.services.ai_core.ai_service import AIService
 
-client = None
 
 TARGET_CTA = {
     "clients": "Would you be open to a quick conversation?",
@@ -11,32 +9,30 @@ TARGET_CTA = {
 }
 
 def generate_outreach_draft(campaign, user):
-    global client
+    
 
     # Lazily create the Groq client only when this function is called
-    if client is None:
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            raise RuntimeError("GROQ_API_KEY is not set")
-        client = Groq(api_key=api_key)
+    
 
     prompt = f"""
-Write a short, human outreach email.
+Generate a professional cold outreach email.
 
 Context:
-- Sender: {user.first_name} {user.last_name}
-- Target type: {campaign.target_type}
-- Campaign description: {campaign.description}
+Sender: {user.first_name} {user.last_name}
+Target type: {campaign.target_type}
+Campaign description: {campaign.description}
 
 Rules:
-- Keep it short and natural
-- No fake personalization
+- Email must be honest and professional
+- Do not impersonate other companies
+- Do not request passwords, payments, or sensitive data
+- Do not use deceptive marketing
 - No emojis
 - Plain text
-- Clear CTA
-- Friendly but professional
+- Friendly and concise
 
-Output format:
+Output format strictly:
+
 Subject:
 <subject>
 
@@ -44,13 +40,17 @@ Body:
 <body>
 """
 
-    response = client.chat.completions.create(
-        model="qwen/qwen3-32b",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.4
-    )
 
-    text = response.choices[0].message.content.strip()
+    result = AIService.generate(
+    feature="outreach_email",
+    user_input=prompt,
+    temperature=0.4,
+    max_tokens=500
+)
+
+    text = result.get("response", "").strip()
+    if detect_phishing(text):
+        raise ValueError("Generated email appears unsafe")
 
     subject = ""
     body = ""
@@ -63,3 +63,23 @@ Body:
         body = text
 
     return subject, body
+
+
+def detect_phishing(text):
+    patterns = [
+        "verify your account",
+        "send payment",
+        "crypto transfer",
+        "urgent payment required",
+        "click this secure link",
+        "password confirmation"
+    ]
+
+    t = text.lower()
+
+    for p in patterns:
+        if p in t:
+            return True
+
+    return False
+

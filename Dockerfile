@@ -42,7 +42,7 @@ ENV PORT=5000
 ENV GUNICORN_CMD_ARGS="\
     --bind=0.0.0.0:5000 \
     --workers=2 \
-    --worker-class=gevent \
+    --worker-class=geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
     --worker-connections=1000 \
     --timeout=120 \
     --log-level=info"
@@ -59,4 +59,5 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 # =====================================================
 # START
 # =====================================================
+RUN chmod +x /app/docker/entrypoint.sh
 CMD ["gunicorn", "run:app"]

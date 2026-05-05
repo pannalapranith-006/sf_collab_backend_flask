@@ -3,6 +3,7 @@ SF Collab Auth Routes
 Updated with notification triggers for account events
 """
 
+from urllib import response
 from flask import Blueprint, request, jsonify, redirect, url_for
 from app.extensions import oauth, db, limiter
 from flask import session
@@ -12,7 +13,10 @@ from flask_jwt_extended import (
     jwt_required, 
     get_jwt_identity,
     get_jwt,
-    decode_token
+    set_access_cookies, 
+    set_refresh_cookies,
+    unset_jwt_cookies,
+    decode_token,
 )
 import traceback
 from app.config import Config
@@ -230,11 +234,25 @@ def register():
         access_token, refresh_token = generate_tokens(user.id)
         save_refresh_token(user.id, refresh_token)
         
-        return success_response({
-            'user': get_user_response_data(user),
-            'access_token': access_token,
-            'refresh_token': refresh_token
-        }, 'Registration successful', 201)
+        response = jsonify({
+            "success": True,
+            "message": "Registration successful",
+            "user": get_user_response_data(user),
+            "access_token": access_token,
+            "refresh_token": refresh_token
+
+=======
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": get_user_response_data(user)
+=======
+
+        })
+        
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+
+        return response
         
     except Exception as e:
         db.session.rollback()
@@ -302,11 +320,25 @@ def login():
         user_response = get_user_response_data(user)
         print(f"DEBUG: User response data prepared")
         
-        return success_response({
-            'user': user_response,
-            'access_token': access_token,
-            'refresh_token': refresh_token
-        }, 'Login successful')
+        response = jsonify({
+            "success": True,
+            "message": "Login successful",
+            "user": user_response,
+            "access_token": access_token,
+            "refresh_token": refresh_token
+
+=======
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": user_response
+=======
+
+        })
+
+        set_access_cookies(response, access_token)
+        set_refresh_cookies(response, refresh_token)
+
+        return response
         
     except Exception as e:
         print(f"DEBUG: Exception in login: {str(e)}")
@@ -351,36 +383,41 @@ def send_verification_code():
         print(f"DEBUG: Exception in send_verification_code: {str(e)}")
         return error_response(str(e), 500)
 
-
 @bp.route('/verify-code', methods=['POST'])
 @limiter.limit("10 per minute")
 def verify_code():
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    claims = decode_token(token)
-
-    parsed_token = claims.get("code")
-    user_id = claims.get("sub")
     data = request.get_json()
-    print(f"DEBUG: Verifying code for user_id: {user_id}, Claims: {claims}, Data: {data}")
-    parsed_token = claims.get("code")
+
+    email = data.get("email")
     submitted_code = data.get("code")
-    print(f"DEBUG: Parsed token code: {parsed_token}, Submitted code: {submitted_code}")
-    if str(parsed_token) != str(submitted_code):
+
+    if not email or not submitted_code:
+        return error_response("Email and code are required", 400)
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user:
+        return error_response("User not found", 404)
+
+    print(f"DEBUG: Stored code: {user.verification_code}, Submitted: {submitted_code}")
+
+    if str(user.verification_code) != str(submitted_code):
         return error_response("Invalid code", 400)
-    
-    user = User.query.get(int(user_id))
-    user.is_email_verified = True
+
+    user.is_verified = True
+    user.verification_code = None
     db.session.commit()
-    
-    # ===== SEND NOTIFICATION =====
+
     try:
         notify_email_verified(user.id)
     except Exception as e:
         print(f"Error sending email verified notification: {e}")
-    
+
     return success_response({
         "verified": True
-    }, "Email verified successfully")
+    })
+
+
 
 
 # ========================== PASSWORD RESET ==========================
@@ -493,14 +530,13 @@ def refresh():
         if not user:
             return error_response('User not found', 404)
         
-        access_token = create_access_token(
-            identity=str(user_id),
-            expires_delta=timedelta(hours=6)
-        )
+
+        new_access_token = create_access_token(identity=str(user_id))
         
-        return success_response({
-            'access_token': access_token
-        })
+        response = jsonify({"message": "Token refreshed"})
+        set_access_cookies(response, new_access_token)
+        
+        return response
         
     except Exception as e:
         return error_response(f'Token refresh failed: {str(e)}', 500)
@@ -526,9 +562,11 @@ def logout():
         #     details=f"User logged out at {utc_now_str()}"
         # )
         
-        return success_response({
-            'message': 'Logged out successfully'
-        })
+
+        response = jsonify({"message": "Logged out successfully"})
+        unset_jwt_cookies(response)
+        
+        return response
         
     except Exception as e:
         return error_response(f'Logout failed: {str(e)}', 500)

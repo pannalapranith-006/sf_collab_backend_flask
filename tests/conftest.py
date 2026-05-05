@@ -8,6 +8,7 @@ from app.extensions import db as _db
 from app.models.user import User
 from app.models.post import Post
 from flask_jwt_extended import create_access_token
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 
 @pytest.fixture(scope='session')
@@ -48,9 +49,9 @@ def db(_db_setup, app):
         connection = _db.engine.connect()
         transaction = connection.begin()
         
-        # Bind session to connection
-        options = dict(bind=connection, binds={})
-        session = _db.create_scoped_session(options=options)
+        # Bind a scoped session to this test connection.
+        # Flask-SQLAlchemy 3.x removed create_scoped_session.
+        session = scoped_session(sessionmaker(bind=connection, autoflush=False, autocommit=False))
         _db.session = session
         
         yield _db
@@ -86,7 +87,7 @@ def sample_user(db):
         email='test@example.com',
         first_name='Test',
         last_name='User',
-        role='user'
+        role='member'
     )
     user.set_password('testpassword123')
     db.session.add(user)
