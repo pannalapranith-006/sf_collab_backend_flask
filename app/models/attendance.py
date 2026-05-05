@@ -2,7 +2,7 @@ from datetime import datetime, time
 from app.extensions import db
 
 from datetime import datetime, date, time
-from extensions import db
+from app.extensions import db
 
 
 
