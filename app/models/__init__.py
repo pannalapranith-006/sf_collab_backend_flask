@@ -65,3 +65,24 @@ from .EscrowTransaction import EscrowTransaction
 
 # Economy Layer 3: Crystals (visibility acceleration only — NOT money)
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
+
+from .marketplace_purchase import MarketplacePurchase
+from .mentor import MentorProfile, MentorSession, MentorshipRequest
+
+# ── ERP Module ────────────────────────────────────────────────────────────────
+from .attendance import Attendance
+from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
+from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
+from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
+from .analytics import AnalyticsSnapshot
+from .user import User
+from .workspace_membership import WorkspaceMembership
+from .membership_audit_log import MembershipAuditLog
+from .attendance_log import AttendanceLog
+from .daily_update import DailyUpdate
+from .warning import Warning
+from .erp_task import ErpTask
+from .proof import Proof
+from .execution_point import ExecutionPoint
+from .revenue_pool import RevenuePool
+
