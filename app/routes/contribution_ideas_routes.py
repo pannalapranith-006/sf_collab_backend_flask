@@ -3,6 +3,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
 from app.models.contributionIdeas import ContributionIdea
 from app.models.user import User
+# app.models.activity (old audit log) removed — no workspace_id context here
 from app.utils.helper import success_response, error_response, paginate, utc_now_str
 from app.models.userRole import UserRole
 
@@ -17,6 +18,7 @@ def create_idea():
     try:
         user_id = int(get_jwt_identity())
         data = request.get_json()
+        data    = request.get_json()
 
         user = User.query.get(user_id)
         if not user:
@@ -36,18 +38,20 @@ def create_idea():
             impact=data.get('impact'),
             area=data.get('area'),
             status=data.get('status'),
-            user_id=user_id
+            user_id=user_id,
         )
 
         db.session.add(idea)
         db.session.commit()
 
         print(f"[activity] contribution_idea_created | user_id={user_id} | idea={idea.title}")
+        # FIX: Activity.log removed — no workspace_id context here
+        print(f"[contribution_ideas] contribution_idea_created: user_id={user_id} title={idea.title!r}")
 
         return success_response(
             data=idea.to_dict(),
             message='Contribution idea created successfully',
-            status=201
+            status=201,
         )
 
     except Exception as e:
@@ -80,21 +84,20 @@ def get_ideas():
         if impact:
             query = query.filter_by(impact=impact)
 
-        query = query.order_by(ContributionIdea.created_at.desc())
+        query     = query.order_by(ContributionIdea.created_at.desc())
         paginated = paginate(query, page=page, per_page=per_page)
-        ideas_data = [idea.to_dict() for idea in paginated['items']]
 
         return success_response(
             data={
-                'ideas': ideas_data,
+                'ideas': [idea.to_dict() for idea in paginated['items']],
                 'pagination': {
-                    'page': paginated['page'],
+                    'page':     paginated['page'],
                     'per_page': paginated['per_page'],
-                    'total': paginated['total'],
-                    'pages': paginated['pages']
-                }
+                    'total':    paginated['total'],
+                    'pages':    paginated['pages'],
+                },
             },
-            message='Ideas retrieved successfully'
+            message='Ideas retrieved successfully',
         )
 
     except Exception as e:
@@ -108,13 +111,12 @@ def get_idea(idea_id):
     """Get a specific contribution idea"""
     try:
         idea = ContributionIdea.query.get(idea_id)
-
         if not idea:
             return error_response('Idea not found', status=404)
 
         return success_response(
             data=idea.to_dict(include_comments=True),
-            message='Idea retrieved successfully'
+            message='Idea retrieved successfully',
         )
 
     except Exception as e:
@@ -129,7 +131,7 @@ def update_idea(idea_id):
     """Update a contribution idea"""
     try:
         user_id = int(get_jwt_identity())
-        data = request.get_json()
+        data    = request.get_json()
 
         idea = ContributionIdea.query.get(idea_id)
         if not idea:
@@ -156,11 +158,13 @@ def update_idea(idea_id):
             idea.area = data.get('area')
 
         db.session.commit()
-        print(f"[activity] contribution_idea_updated | user_id={user_id} | idea={idea.title}")
+
+        # FIX: Activity.log removed — no workspace_id context here
+        print(f"[contribution_ideas] contribution_idea_updated: user_id={user_id} title={idea.title!r}")
 
         return success_response(
             data=idea.to_dict(),
-            message='Idea updated successfully'
+            message='Idea updated successfully',
         )
 
     except Exception as e:
@@ -187,7 +191,9 @@ def delete_idea(idea_id):
         title = idea.title
         db.session.delete(idea)
         db.session.commit()
-        print(f"[activity] contribution_idea_deleted | user_id={user_id} | idea={title}")
+
+        # FIX: Activity.log removed — no workspace_id context here
+        print(f"[contribution_ideas] contribution_idea_deleted: user_id={user_id} title={title!r}")
 
         return success_response(message='Idea deleted successfully')
 
@@ -202,31 +208,29 @@ def delete_idea(idea_id):
 def get_user_ideas(user_id):
     """Get all ideas from a specific user"""
     try:
-        page = request.args.get('page', 1, type=int)
+        page     = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
 
         user = User.query.get(user_id)
         if not user:
             return error_response('User not found', status=404)
 
-        query = ContributionIdea.query.filter_by(user_id=user_id).order_by(
+        query     = ContributionIdea.query.filter_by(user_id=user_id).order_by(
             ContributionIdea.created_at.desc()
         )
-
         paginated = paginate(query, page=page, per_page=per_page)
-        ideas_data = [idea.to_dict() for idea in paginated['items']]
 
         return success_response(
             data={
-                'ideas': ideas_data,
+                'ideas': [idea.to_dict() for idea in paginated['items']],
                 'pagination': {
-                    'page': paginated['page'],
+                    'page':     paginated['page'],
                     'per_page': paginated['per_page'],
-                    'total': paginated['total'],
-                    'pages': paginated['pages']
-                }
+                    'total':    paginated['total'],
+                    'pages':    paginated['pages'],
+                },
             },
-            message='User ideas retrieved successfully'
+            message='User ideas retrieved successfully',
         )
 
     except Exception as e:

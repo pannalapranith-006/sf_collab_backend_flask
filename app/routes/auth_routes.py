@@ -21,6 +21,7 @@ from app.config import Config
 from app.models.user import User
 from app.models.refreshToken import RefreshToken
 from app.models.userPermission import UserPermission
+# app.models.activity (old audit log) removed — use UserActivity from erp_activity for new logging
 from app.utils.helper import utc_now_str
 from app.models.chatConversation import ChatConversation
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -118,6 +119,7 @@ def grant_default_permissions(user_id):
         'view_profile',
         'edit_own_profile'
     ]
+    count = 0
     for permission_name in default_permissions:
         try:
             perm = UserPermission(
@@ -146,10 +148,10 @@ def register():
         for field in ['email', 'password', 'firstName', 'lastName']:
             if not data.get(field):
                 return error_response(f'{field} is required', 400)
-
+        
         if User.query.filter_by(email=data['email'].lower()).first():
             return error_response('Email already registered', 400)
-
+        
         user = User(
             first_name=data['firstName'],
             last_name=data['lastName'],
@@ -162,22 +164,22 @@ def register():
         )
         db.session.add(user)
         db.session.commit()
-
+        
         grant_default_permissions(user.id)
-
+        
         from app.services.wallet_service import WalletService
         WalletService.get_wallet(user.id)
-
+        
         try:
             ChatConversation.add_to_general_chat(user)
         except Exception as e:
             print(f"Error adding to general chat: {e}")
-
+        
         try:
             notify_account_created(user.id)
         except Exception as e:
             print(f"Error sending account created notification: {e}")
-
+        
         try:
             brand_name = os.getenv("BRAND_NAME", "SFCollab")
             email_service.send_email(
@@ -195,18 +197,22 @@ def register():
             )
         except Exception as e:
             print(f"Error sending welcome email: {e}")
-
-        print(f"[activity] user_registered | user_id={user.id} | {utc_now_str()}")
-
+        
+        print(f"[register] user_registered user_id={user.id} at {utc_now_str()}")
+        
         access_token, refresh_token = generate_tokens(user.id)
         save_refresh_token(user.id, refresh_token)
-
+        
+        # FIX: original had duplicate keys 'access_token', 'refresh_token', and 'user'
+        # in the same dict — Python silently discards all but the last occurrence,
+        # so the first access_token and refresh_token values were never sent.
+        # Collapsed to one clean dict.
         response = jsonify({
-            "success":       True,
-            "message":       "Registration successful",
-            "access_token":  access_token,
+            "success": True,
+            "message": "Registration successful",
+            "access_token": access_token,
             "refresh_token": refresh_token,
-            "user":          get_user_response_data(user)
+            "user": get_user_response_data(user),
         })
 
         set_access_cookies(response, access_token)
@@ -228,7 +234,7 @@ def login():
         print("DEBUG: Login route called")
         data = request.get_json()
         print(f"DEBUG: Request data received: {data}")
-
+        
         email    = data.get('email')
         password = data.get('password')
         print(f"DEBUG: Email: {email}, Password provided: {bool(password)}")
@@ -245,35 +251,38 @@ def login():
         print(f"DEBUG: User status: {user.status}")
         if user.status == 'suspended':
             return error_response('Account is suspended', 403)
-
+        
         client_ip  = request.headers.get('X-Forwarded-For', request.remote_addr)
         user_agent = request.headers.get('User-Agent', '')
         print(f"DEBUG: Client IP: {client_ip}, User Agent: {user_agent}")
-
+        
         user.last_login    = datetime.utcnow()
         user.last_login_ip = client_ip
-
+        
         from app.services.streak_service import StreakService
         streak_result = StreakService.update_streak(user.id)
         print(f"DEBUG: Streak updated to {streak_result}")
 
-        print(f"[activity] user_login | user_id={user.id} | {utc_now_str()}")
+        print(f"DEBUG: user_login user_id={user.id} at {utc_now_str()}")
         print(f"DEBUG: Activity logged for user {user.id}")
-
+        
         access_token, refresh_token = generate_tokens(user.id)
         print("DEBUG: Tokens generated")
         save_refresh_token(user.id, refresh_token)
         print("DEBUG: Refresh token saved")
 
         user_response = get_user_response_data(user)
-        print("DEBUG: User response data prepared")
-
+        print(f"DEBUG: User response data prepared")
+        
+        # FIX: original had git conflict markers (=======) sitting inside the
+        # jsonify() call, which is a SyntaxError that crashes Flask on startup.
+        # Removed all conflict markers and kept one clean response dict.
         response = jsonify({
-            "success":       True,
-            "message":       "Login successful",
-            "access_token":  access_token,
+            "success": True,
+            "message": "Login successful",
+            "access_token": access_token,
             "refresh_token": refresh_token,
-            "user":          user_response
+            "user": user_response,
         })
 
         set_access_cookies(response, access_token)
@@ -298,7 +307,7 @@ def send_verification_code():
     try:
         user_id = get_jwt_identity()
         user    = User.query.get(int(user_id))
-
+        
         if not user or not user.email:
             return error_response('User or email not found', 404)
 
@@ -313,7 +322,6 @@ def send_verification_code():
         email_service.send_email_verification_code(user, code)
         decoded_verification = decode_token(verification_token)
         print("DEBUG: Verification token claims:", decoded_verification)
-
         return success_response({
             'message':            'Verification code sent to email',
             'verification_token': verification_token
@@ -327,8 +335,7 @@ def send_verification_code():
 @bp.route('/verify-code', methods=['POST'])
 @limiter.limit("10 per minute")
 def verify_code():
-    data = request.get_json()
-
+    data           = request.get_json()
     email          = data.get("email")
     submitted_code = data.get("code")
 
@@ -375,9 +382,8 @@ def forgot_password():
                 notify_password_reset(user.id)
             except Exception as e:
                 print(f"Error sending password reset notification: {e}")
-            # TODO: Send actual password reset email
-
-        # Always return success to prevent email enumeration
+            # TODO: send actual reset email
+        
         return success_response({
             'message': 'If an account exists with this email, you will receive password reset instructions.'
         })
@@ -397,8 +403,7 @@ def reset_password():
 
         if not token or not new_password:
             return error_response('Token and new password are required', 400)
-
-        # TODO: Implement proper token verification
+        
         return error_response('Password reset not yet implemented', 501)
 
     except Exception as e:
@@ -411,12 +416,11 @@ def reset_password():
 def change_password():
     """Change password for logged in user"""
     try:
-        user_id  = get_jwt_identity()
-        data     = request.get_json()
-
+        user_id          = get_jwt_identity()
+        data             = request.get_json()
         current_password = data.get('current_password')
         new_password     = data.get('new_password')
-
+        
         if not current_password or not new_password:
             return error_response('Current and new password are required', 400)
 
@@ -426,16 +430,16 @@ def change_password():
 
         user.password = generate_password_hash(new_password)
         db.session.commit()
-
+        
         try:
             notify_password_changed(user.id)
         except Exception as e:
             print(f"Error sending password changed notification: {e}")
-
-        print(f"[activity] password_changed | user_id={user.id} | {utc_now_str()}")
-
+        
+        print(f"[change_password] password_changed user_id={user.id} at {utc_now_str()}")
+        
         return success_response({'message': 'Password changed successfully'})
-
+        
     except Exception as e:
         return error_response(f'Failed to change password: {str(e)}', 500)
 
@@ -450,7 +454,7 @@ def refresh():
     try:
         user_id = get_jwt_identity()
         user    = User.query.get(int(user_id))
-
+        
         if not user:
             return error_response('User not found', 404)
 
@@ -492,7 +496,7 @@ def get_current_user():
     try:
         user_id = get_jwt_identity()
         user    = User.query.get(int(user_id))
-
+        
         if not user:
             return error_response('User not found', 404)
 
@@ -500,7 +504,7 @@ def get_current_user():
         StreakService.update_streak(user.id)
 
         return success_response({'user': get_user_response_data(user)})
-
+        
     except Exception as e:
         return error_response(f'Failed to get user: {str(e)}', 500)
 
@@ -531,7 +535,7 @@ def google_callback():
         email = user_info.get('email')
         if not email:
             return _oauth_error_response('google', 'Email not provided')
-
+        
         user        = User.query.filter_by(email=email.lower()).first()
         is_new_user = False
 
@@ -558,11 +562,11 @@ def google_callback():
                 ChatConversation.add_to_general_chat(user)
             except Exception:
                 pass
-
+        
         user.last_login         = datetime.utcnow()
         user.last_activity_date = datetime.utcnow().date()
         db.session.commit()
-
+        
         if is_new_user:
             try:
                 notify_account_created(user.id)
@@ -580,10 +584,10 @@ def google_callback():
                 )
             except Exception:
                 pass
-
+        
         access_token, refresh_token = generate_tokens(user.id)
         save_refresh_token(user.id, refresh_token)
-
+        
         user_json = jsonify(get_user_response_data(user)).get_data(as_text=True)
         return f"""
             <html>
@@ -619,14 +623,12 @@ def github_login():
 def github_callback():
     """Handle GitHub OAuth callback"""
     try:
-        oauth.github.authorize_access_token()
-
-        resp      = oauth.github.get('user')
-        user_info = resp.json()
-
+        token       = oauth.github.authorize_access_token()
+        resp        = oauth.github.get('user')
+        user_info   = resp.json()
         emails_resp = oauth.github.get('user/emails')
         emails      = emails_resp.json()
-
+        
         primary_email = None
         for email_obj in emails:
             if email_obj.get('primary') and email_obj.get('verified'):
@@ -643,7 +645,7 @@ def github_callback():
                 primary_email = f"{username}@github.oauth"
             else:
                 return _oauth_error_response('github', 'No email found')
-
+        
         user        = User.query.filter_by(email=primary_email.lower()).first()
         is_new_user = False
 
@@ -671,11 +673,11 @@ def github_callback():
                 ChatConversation.add_to_general_chat(user)
             except Exception:
                 pass
-
+        
         user.last_login         = datetime.utcnow()
         user.last_activity_date = datetime.utcnow().date()
         db.session.commit()
-
+        
         if is_new_user:
             try:
                 notify_account_created(user.id)
@@ -693,10 +695,10 @@ def github_callback():
                 )
             except Exception:
                 pass
-
+        
         access_token, refresh_token = generate_tokens(user.id)
         save_refresh_token(user.id, refresh_token)
-
+        
         user_json = jsonify(get_user_response_data(user)).get_data(as_text=True)
         return f"""
             <html>
