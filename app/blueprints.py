@@ -77,6 +77,7 @@ from .routes import (
     readiness_routes,
     balance_routes,
     crystal_routes,
+    sfmeetsearch_routes,
     
 )
 
@@ -154,4 +155,5 @@ blueprints = [
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
+{ "blueprint": sfmeetsearch_routes.search_bp, "url_prefix": "/api/sfmeet"},
 ]

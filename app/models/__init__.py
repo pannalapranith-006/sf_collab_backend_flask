@@ -65,3 +65,6 @@ from .EscrowTransaction import EscrowTransaction
 
 # Economy Layer 3: Crystals (visibility acceleration only — NOT money)
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
+
+#SFMeet Search and Retrieval system
+from .sfmeetsearch_models import Meeting, Transcript, Summary, Decision
