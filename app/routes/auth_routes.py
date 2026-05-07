@@ -241,7 +241,6 @@ def register():
             "access_token": access_token,
             "refresh_token": refresh_token
 
-=======
             "access_token": access_token,
             "refresh_token": refresh_token,
             "user": get_user_response_data(user)
@@ -327,7 +326,6 @@ def login():
             "access_token": access_token,
             "refresh_token": refresh_token
 
-=======
             "access_token": access_token,
             "refresh_token": refresh_token,
             "user": user_response

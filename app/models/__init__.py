@@ -65,6 +65,14 @@ from .EscrowTransaction import EscrowTransaction
 
 # Economy Layer 3
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
+from .analytics import AnalyticsSnapshot
 
 from .marketplace_purchase import MarketplacePurchase
+from .mentor import MentorProfile, MentorSession, MentorshipRequest
+
+# ── ERP Module ────────────────────────────────────────────────────────────────
+from .attendance import Attendance
+from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
+from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
+from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
 from .analytics import AnalyticsSnapshot
