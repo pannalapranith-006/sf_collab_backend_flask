@@ -1,33 +1,22 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.utils.helper import error_response, success_response
-from app.models.erp_activity import UserActivity
 from app.utils.helper import error_response, success_response, paginate
-from datetime import datetime, timedelta
+from app.models.erp_activity import UserActivity
+from datetime import datetime
 
 activities_bp = Blueprint('activities', __name__)
 
-# NOTE: The Activity model does not exist in this codebase.
-# These endpoints return empty/stub responses so the app boots correctly.
-# Replace with real implementation once an Activity model is created.
 
 @activities_bp.route('', methods=['GET'])
 @jwt_required()
 def get_activities():
-    """Get all activities — stubbed until Activity model exists"""
-    return success_response({
-        'activities': [],
-        'pagination': {'page': 1, 'per_page': 10, 'total': 0, 'pages': 0}
     """Get all user activity records with filtering."""
-    page         = request.args.get('page', 1, type=int)
-    per_page     = request.args.get('per_page', 10, type=int)
-    user_id      = request.args.get('user_id', type=int)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+    user_id = request.args.get('user_id', type=int)
     workspace_id = request.args.get('workspace_id', type=int)
-    start_date   = request.args.get('start_date', type=str)
-    end_date     = request.args.get('end_date', type=str)
-
-    # NOTE: old Activity model filtered by 'action' string (e.g. "user_login").
-    # UserActivity has no action column — filter by workspace_id or user_id instead.
+    start_date = request.args.get('start_date', type=str)
+    end_date = request.args.get('end_date', type=str)
 
     query = UserActivity.query
 
@@ -54,10 +43,10 @@ def get_activities():
     return success_response({
         'activities': [a.to_dict() for a in result['items']],
         'pagination': {
-            'page':     result['page'],
+            'page': result['page'],
             'per_page': result['per_page'],
-            'total':    result['total'],
-            'pages':    result['pages'],
+            'total': result['total'],
+            'pages': result['pages'],
         }
     })
 
@@ -65,16 +54,10 @@ def get_activities():
 @activities_bp.route('/recent', methods=['GET'])
 @jwt_required()
 def get_recent_activities():
-    """Get recent activities — stubbed until Activity model exists"""
-    return success_response({'activities': []})
-
     """Get the most recently active user records."""
-    limit        = request.args.get('limit', 20, type=int)
-    user_id      = request.args.get('user_id', type=int)
+    limit = request.args.get('limit', 20, type=int)
+    user_id = request.args.get('user_id', type=int)
     workspace_id = request.args.get('workspace_id', type=int)
-
-    # NOTE: old Activity.get_recent_activities() also accepted an 'action' filter
-    # which doesn't exist on UserActivity. workspace_id is the nearest equivalent scope.
 
     query = UserActivity.query
 
@@ -94,16 +77,11 @@ def get_recent_activities():
 @activities_bp.route('/my-activities', methods=['GET'])
 @jwt_required()
 def get_my_activities():
-    """Get current user's activities — stubbed until Activity model exists"""
-    return success_response({
-        'activities': [],
-        'pagination': {'page': 1, 'per_page': 10, 'total': 0, 'pages': 0}
-    })
     """Get current user's activity records."""
     current_user_id = get_jwt_identity()
 
-    page         = request.args.get('page', 1, type=int)
-    per_page     = request.args.get('per_page', 10, type=int)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
     workspace_id = request.args.get('workspace_id', type=int)
 
     query = UserActivity.query.filter_by(user_id=current_user_id)
@@ -116,10 +94,10 @@ def get_my_activities():
     return success_response({
         'activities': [a.to_dict() for a in result['items']],
         'pagination': {
-            'page':     result['page'],
+            'page': result['page'],
             'per_page': result['per_page'],
-            'total':    result['total'],
-            'pages':    result['pages'],
+            'total': result['total'],
+            'pages': result['pages'],
         }
     })
 
