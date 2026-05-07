@@ -80,3 +80,9 @@ from .analytics import AnalyticsSnapshot
 from .drive_folder import DriveFolder
 from .drive_file import DriveFile, DriveFileVersion
 from .drive_permission import DriveFilePermission, DriveFileRelation
+#from .analytics import AnalyticsSnapshot
+#from .analytics import AnalyticsSnapshot
+  
+from app.models.drive_file import DriveFile                             
+from app.models.drive_file_relation import DriveFileRelation
+from app.models.drive_audit_log import DriveAuditLog
