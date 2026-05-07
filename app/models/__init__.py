@@ -66,6 +66,11 @@ from .EscrowTransaction import EscrowTransaction
 # Economy Layer 3
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
 
+#SFDrive Folder System
+from .sfdrivefolder import Folder
+from .sfdrive_file import SFFile
+#SFDRIVE tagging system
+from .sfdrive_tag import Tag
 from .marketplace_purchase import MarketplacePurchase
 from .mentor import MentorProfile, MentorSession, MentorshipRequest
 
@@ -73,6 +78,7 @@ from .mentor import MentorProfile, MentorSession, MentorshipRequest
 from .attendance import Attendance
 from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
+from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
 from .erp_activity import UserActivity, ActivityMonitorJobHealth
 from .analytics import AnalyticsSnapshot
 
