@@ -16,7 +16,7 @@ from flask_jwt_extended import (
     set_access_cookies, 
     set_refresh_cookies,
     unset_jwt_cookies,
-    decode_token
+    decode_token,
 )
 import traceback
 from app.config import Config
@@ -237,7 +237,16 @@ def register():
         response = jsonify({
             "success": True,
             "message": "Registration successful",
+            "user": get_user_response_data(user),
+            "access_token": access_token,
+            "refresh_token": refresh_token
+
+=======
+            "access_token": access_token,
+            "refresh_token": refresh_token,
             "user": get_user_response_data(user)
+=======
+
         })
         
         set_access_cookies(response, access_token)
@@ -312,11 +321,20 @@ def login():
         print(f"DEBUG: User response data prepared")
         
         response = jsonify({
-        "success": True,
-        "message": "Login successful",
-        "user": user_response
-    })
-    
+            "success": True,
+            "message": "Login successful",
+            "user": user_response,
+            "access_token": access_token,
+            "refresh_token": refresh_token
+
+=======
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": user_response
+=======
+
+        })
+
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
 
@@ -365,36 +383,41 @@ def send_verification_code():
         print(f"DEBUG: Exception in send_verification_code: {str(e)}")
         return error_response(str(e), 500)
 
-
 @bp.route('/verify-code', methods=['POST'])
 @limiter.limit("10 per minute")
 def verify_code():
-    token = request.headers.get("Authorization", "").replace("Bearer ", "")
-    claims = decode_token(token)
-
-    parsed_token = claims.get("code")
-    user_id = claims.get("sub")
     data = request.get_json()
-    print(f"DEBUG: Verifying code for user_id: {user_id}, Claims: {claims}, Data: {data}")
-    parsed_token = claims.get("code")
+
+    email = data.get("email")
     submitted_code = data.get("code")
-    print(f"DEBUG: Parsed token code: {parsed_token}, Submitted code: {submitted_code}")
-    if str(parsed_token) != str(submitted_code):
+
+    if not email or not submitted_code:
+        return error_response("Email and code are required", 400)
+
+    user = User.query.filter_by(email=email).first()
+
+    if not user:
+        return error_response("User not found", 404)
+
+    print(f"DEBUG: Stored code: {user.verification_code}, Submitted: {submitted_code}")
+
+    if str(user.verification_code) != str(submitted_code):
         return error_response("Invalid code", 400)
-    
-    user = User.query.get(int(user_id))
-    user.is_email_verified = True
+
+    user.is_verified = True
+    user.verification_code = None
     db.session.commit()
-    
-    # ===== SEND NOTIFICATION =====
+
     try:
         notify_email_verified(user.id)
     except Exception as e:
         print(f"Error sending email verified notification: {e}")
-    
+
     return success_response({
         "verified": True
-    }, "Email verified successfully")
+    })
+
+
 
 
 # ========================== PASSWORD RESET ==========================

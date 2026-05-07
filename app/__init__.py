@@ -18,7 +18,7 @@ from app.services.email_service import EmailService
 from flask_session import Session
 import stripe
 from app.services.ai_news.scheduler import start_scheduler
-
+#from app.routes.analytics import analytics_bp
 WEBHOOK_SECRET = b'sFcollab_2025_secretKey!'
 
 # Suppress warnings first
@@ -65,6 +65,7 @@ SCHEMA_MIGRATIONS = [
     ("ideas", "required_roles",      "JSON"),
     ("ideas", "roadmap_items",       "JSON"),
 
+
     # users table — fixes missing columns needed by auth/profile flows
     ("users", "last_seen",                    "DATETIME"),
     ("users", "last_login_ip",                "VARCHAR(45)"),
@@ -77,6 +78,10 @@ SCHEMA_MIGRATIONS = [
     ("users", "tasks_completed",              "INTEGER DEFAULT 0"),
     ("users", "tasks_on_time",                "INTEGER DEFAULT 0"),
     ("users", "collaborations_count",         "INTEGER DEFAULT 0"),
+
+    
+    ("ideas", "activated_as_startup_id", "INTEGER"),
+
 ]
 
 
@@ -137,7 +142,7 @@ def create_app(config_name=None):
     """Create and configure Flask application"""
 
     app = Flask(__name__, instance_relative_config=True)
-    
+    #app.register_blueprint(analytics_bp)
     # REMOVED BROKEN PREFLIGHT HANDLER - Flask-CORS handles this automatically
     
     config_class = get_config(config_name)
@@ -147,6 +152,13 @@ def create_app(config_name=None):
     
     # JWT Configuration
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY") or app.config.get("SECRET_KEY")
+    app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]   # ← CHANGED
+    app.config["JWT_COOKIE_SECURE"] = False                      # ← CHANGED (localhost)
+    app.config["JWT_COOKIE_SAMESITE"] = "Lax"                   # ← CHANGED (localhost)
+    app.config["JWT_COOKIE_CSRF_PROTECT"] = False                # ← CHANGED (no CSRF for header auth)
+    app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
+    app.config["JWT_REFRESH_COOKIE_PATH"] = "/api/auth/refresh"
+    app.config["JWT_COOKIE_DOMAIN"] = None                       # ← CHANGED (localhost)
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
     app.config["JWT_ACCESS_COOKIE_PATH"] = "/"
@@ -167,8 +179,6 @@ def create_app(config_name=None):
         app.config["JWT_COOKIE_SAMESITE"] = "Lax"
         app.config["JWT_COOKIE_CSRF_PROTECT"] = False
         app.config["JWT_COOKIE_DOMAIN"] = None
-
-
 
     
     # Session configuration
@@ -225,29 +235,54 @@ def create_app(config_name=None):
     app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
+
     print("Initializing CORS with origins:", app.config.get('CORS_ORIGINS', []))
     allowed_origins = app.config.get('CORS_ORIGINS', [])
     CORS(
         app,
         resources={r"/*": {"origins": allowed_origins}},
+    allowed_origins = [
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173",
+        "https://staging.sfcollab.com",
+        "https://sfcollab.com",
+        "https://sfclb.netlify.app"
+    ]
+
+    print(f"🚀 CORS ACTIVE FOR: {allowed_origins}")
+
+    CORS(app, resources={r"/*": {"origins": allowed_origins}}, 
+
         supports_credentials=True,
-        allow_headers=[
-            "Content-Type",
-            "Authorization",
-            "X-Requested-With",
-            "X-CSRF-TOKEN",
-        ],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     )
 
     @app.after_request
     def handle_cors(response):
+
+
         request_origin = request.headers.get("Origin")
         if request_origin and request_origin in allowed_origins:
             response.headers["Access-Control-Allow-Origin"] = request_origin
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Credentials"] = "true"
+
+        response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+
+
+        response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        # We let the CORS(app) block above handle the headers dynamically.
+        # This keeps the function but removes the hardcoded 'staging' override.
+
+        # We let the CORS(app) block above handle the headers dynamically.
+        # This keeps the function but removes the hardcoded staging override.
         return response
 
     @app.route('/<path:path>', methods=['OPTIONS'])
@@ -410,5 +445,11 @@ def create_app(config_name=None):
     
         print(event, payload)
         return '', 200
+    
+
 
     return app
+
+
+    return app
+

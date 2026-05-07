@@ -860,6 +860,126 @@ NOTIFICATION_TEMPLATES = {
     },
 
     # ============================================
+    # 15. MENTORSHIP NOTIFICATIONS
+    # ============================================
+    "MENTORSHIP_REQUEST_RECEIVED": {
+        "type": "info",
+        "category": "mentorship",
+        "priority": "high",
+        "title": "New Mentorship Request",
+        "message": "{actor_name} requested mentorship for their project '{project_title}'.",
+    },
+    "MENTORSHIP_REQUEST_ACCEPTED": {
+        "type": "success",
+        "category": "mentorship",
+        "priority": "high",
+        "title": "Mentorship Request Accepted! 🎉",
+        "message": "{mentor_name} accepted your mentorship request for '{project_title}'.",
+    },
+    "MENTORSHIP_REQUEST_DECLINED": {
+        "type": "warning",
+        "category": "mentorship",
+        "priority": "medium",
+        "title": "Mentorship Request Declined",
+        "message": "{mentor_name} declined your mentorship request. Reason: {reason}",
+    },
+    "MENTORSHIP_REQUEST_CANCELLED": {
+        "type": "info",
+        "category": "mentorship",
+        "priority": "low",
+        "title": "Mentorship Request Cancelled",
+        "message": "{actor_name} cancelled their mentorship request.",
+    },
+    "MENTORSHIP_SESSION_COMPLETED": {
+        "type": "success",
+        "category": "mentorship",
+        "priority": "high",
+        "title": "Mentorship Session Completed",
+        "message": "Your session with {mentor_name} is complete. Please rate your experience.",
+    },
+    "MENTORSHIP_SESSION_SUMMARY": {
+        "type": "info",
+        "category": "mentorship",
+        "priority": "medium",
+        "title": "Session Summary Available",
+        "message": "{mentor_name} added a session summary and action items for you.",
+    },
+    "MENTORSHIP_RATED": {
+        "type": "info",
+        "category": "mentorship",
+        "priority": "low",
+        "title": "Session Rated",
+        "message": "{founder_name} rated your mentorship session {rating}/5.",
+    },
+    "MENTOR_PAYOUT_PROCESSED": {
+        "type": "success",
+        "category": "mentorship",
+        "priority": "high",
+        "title": "Mentor Payout Processed 💰",
+        "message": "${amount} has been added to your Balance wallet.",
+    },
+    "VISION_READINESS_IMPROVED": {
+        "type": "success",
+        "category": "mentorship",
+        "priority": "medium",
+        "title": "Vision Readiness Improved! 📈",
+        "message": "Your vision readiness score improved by {points} points after mentor review.",
+    },
+
+    # ============================================
+    # 16. MARKETPLACE NOTIFICATIONS
+    # ============================================
+    "MARKETPLACE_NEW_PURCHASE": {
+        "type": "success",
+        "category": "marketplace",
+        "priority": "high",
+        "title": "New Sale! 🎉",
+        "message": "{buyer_name} purchased your listing '{listing_title}' for ${amount}.",
+    },
+    "MARKETPLACE_PURCHASE_CONFIRMED": {
+        "type": "success",
+        "category": "marketplace",
+        "priority": "high",
+        "title": "Purchase Successful",
+        "message": "You successfully purchased '{listing_title}'. Download is now available.",
+    },
+    "MARKETPLACE_LISTING_RATED": {
+        "type": "info",
+        "category": "marketplace",
+        "priority": "low",
+        "title": "New Rating on Your Listing",
+        "message": "{buyer_name} rated '{listing_title}' {rating}/5 stars.",
+    },
+    "MARKETPLACE_LISTING_REJECTED": {
+        "type": "warning",
+        "category": "marketplace",
+        "priority": "high",
+        "title": "Listing Rejected",
+        "message": "Your listing '{listing_title}' was rejected. Reason: {reason}",
+    },
+    "MARKETPLACE_LISTING_PUBLISHED": {
+        "type": "success",
+        "category": "marketplace",
+        "priority": "medium",
+        "title": "Listing Published",
+        "message": "Your listing '{listing_title}' is now live on the marketplace.",
+    },
+    "MARKETPLACE_PAYOUT_PROCESSED": {
+        "type": "success",
+        "category": "marketplace",
+        "priority": "high",
+        "title": "Marketplace Payout 💰",
+        "message": "${amount} from marketplace sales has been added to your Balance wallet.",
+    },
+    "MARKETPLACE_LISTING_BOOSTED": {
+        "type": "info",
+        "category": "marketplace",
+        "priority": "low",
+        "title": "Listing Boost Active",
+        "message": "Your listing '{listing_title}' is now boosted for {hours} hours.",
+    },
+
+    # ============================================
     # GENERIC/FALLBACK
     # ============================================
     "GENERIC_SUCCESS": {
@@ -923,6 +1043,8 @@ NOTIFICATION_CATEGORIES = [
     "digest",
     "application",
     "access",
+    "mentorship",
+    "marketplace",
 ]
 
 # Notification types
