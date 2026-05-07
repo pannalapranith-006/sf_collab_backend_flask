@@ -1,6 +1,5 @@
 """
 Marketplace Routes — SF Marketplace Foundation
-================================================
 Blueprint mounted at /api/marketplace
 
 Endpoints:

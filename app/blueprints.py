@@ -1,3 +1,5 @@
+from app.routes import ai_news_routes
+
 from .routes import (
     main_routes, auth_routes, user_routes, profile_routes,
     idea_routes, knowledge_routes, startup_routes, project_goal_routes,
@@ -67,6 +69,7 @@ from .routes import(
     friend_request_routes,
     waitlist_routes,
     feedback_routes,
+    scraper_routes,
     user_roles_routes,
     application_routes,
     contribution_ideas_routes,
@@ -85,6 +88,10 @@ from .routes import(
     readiness_routes,
     balance_routes,
     crystal_routes,
+    sfmeetsearch_routes,
+    activation_routes,
+    mentorship_routes,
+
     sfdrivefolder_routes,
     sfdrivetag_routes,
     
@@ -304,6 +311,8 @@ blueprints = [
     { "blueprint": analytics_bp,        "url_prefix": '/analytics' },
     { "blueprint": activity_monitor_bp, "url_prefix": '/api/activity' },
     { "blueprint": daily_updates_bp,    "url_prefix": '/api/daily-updates' },
+]
+
 
     #  SF Drive Module 
     { "blueprint": drive_bp },
@@ -317,7 +326,7 @@ blueprints = [
 { "blueprint": idea_routes.ideas_bp, "url_prefix": '/api/ideas'},
 { "blueprint": knowledge_routes.knowledge_bp, "url_prefix": '/api/knowledge'},
 { "blueprint": startup_routes.startups_bp, "url_prefix": '/api/startups'},
-# { "blueprint": api_routes.api_bp, "url_prefix": '/api/ai'},
+{ "blueprint": api_routes.api_bp, "url_prefix": '/api/ai'},
 { "blueprint": project_goal_routes.project_goals_bp, "url_prefix": '/api/project-goals'},
 { "blueprint": startup_bookmark_routes.bookmarks_bp, "url_prefix": '/api/startup-bookmarks'},
 { "blueprint": startup_member_routes.startup_members_bp, "url_prefix": '/api/startup-members'},
@@ -352,31 +361,44 @@ blueprints = [
 { "blueprint": friend_request_routes.friend_requests_bp, "url_prefix": '/api/friend-requests'},
 { "blueprint": activity_routes.activities_bp, "url_prefix": '/api/activities'},
 { "blueprint": waitlist_routes.waitlist_bp, "url_prefix": '/api/waitlist'},
-# { "blueprint": pdf_signing_routes.pdf_bp, "url_prefix": '/api/pdf'},
-# { "blueprint": background_remover.background_bp, "url_prefix": '/api/background-remover'},
-# { "blueprint": qwen_chat_bp_pdg_br.qwen_bp, "url_prefix": '/api/ai'},
+{ "blueprint": pdf_signing_routes.pdf_bp, "url_prefix": '/api/pdf'},
+{ "blueprint": background_remover.background_bp, "url_prefix": '/api/background-remover'},
+{ "blueprint": qwen_chat_bp_pdg_br.qwen_bp, "url_prefix": '/api/ai'},
 { "blueprint": business_plan_routes.plans_bp, "url_prefix": "/api/plans" },
-# { "blueprint": ai_routes.ai_bp, "url_prefix": '/api/ai'},
+{ "blueprint": ai_routes.ai_bp, "url_prefix": '/api/ai'},
 { "blueprint": image_editor_routes.image_editor_bp, "url_prefix": '/api/image-editor'},
 { "blueprint": cf_img_proccessing_routes.cf_bp, "url_prefix": '/api/cf'},
 { "blueprint": feedback_routes.feedback_bp, "url_prefix": '/api/feedback' },
-# {"blueprint": scraper_routes.scraper_bp, "url_prefix": "/api"},
+{"blueprint": scraper_routes.scraper_bp, "url_prefix": "/api"},
 { "blueprint": user_roles_routes.user_roles_bp, "url_prefix": '/api/user-roles'},
 { "blueprint": application_routes.applications_bp, "url_prefix": '/api/applications' },
 { "blueprint": contribution_ideas_routes.bp, "url_prefix": '/api/contribution-ideas'},
 { "blueprint": contribution_polls_routes.poll_bp, "url_prefix": '/api/contribution-polls'},
-# { "blueprint": builder_routes.builder_bp, "url_prefix": '/api/builder'},
+{ "blueprint": builder_routes.builder_bp, "url_prefix": '/api/builder'},
 { "blueprint": payment_routes.payment_bp, "url_prefix": '/api/payments' },
 { "blueprint": outreach_routes.outreach_bp, "url_prefix": "/api/outreach" },
 {"blueprint": connection_routes.connections_bp, "url_prefix": "/api/connections"},
 { "blueprint": user_social_routes.user_social_bp, "url_prefix": '/api/user-social' },
 { "blueprint": dashboard_routes.dashboard_bp, "url_prefix": '/api/dashboard' },
-# { "blueprint": video_gen_routes.video_bp, "url_prefix": '/api/video' },
+{ "blueprint": video_gen_routes.video_bp, "url_prefix": '/api/video' },
 {"blueprint": pitch_deck_routes.pitch_decks_bp, "url_prefix":"/api/pitch-decks"},
 { "blueprint": wallet_routes.wallet_bp, "url_prefix": '/api/wallet'},
 { "blueprint": store_routes.store_bp, "url_prefix": '/api/store'},
-# { "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
+{ "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
 { "blueprint": marketplace_routes.marketplace_bp, "url_prefix": '/api/marketplace'},
+ { "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
+{ "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
+{ "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
+{ "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
+{ "blueprint": sfmeetsearch_routes.search_bp, "url_prefix": "/api/sfmeet"},
+]
+{ "blueprint": activation_routes.activation_bp, "url_prefix": '/api/activation' },
+{ "blueprint": mentorship_routes.mentorship_bp, "url_prefix": '/api/mentorship' },
+]
+
+]
+from app.routes.meet_routes import meet_bp
+app.register_blueprint(meet_bp)
 # { "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },

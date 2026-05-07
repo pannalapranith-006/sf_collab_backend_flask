@@ -293,6 +293,19 @@ def create_app(config_name=None):
     CORS(
         app,
         resources={r"/*": {"origins": allowed_origins}},
+    )
+    allowed_origins = [
+        "http://localhost:5173", 
+        "http://127.0.0.1:5173",
+        "https://staging.sfcollab.com",
+        "https://sfcollab.com",
+        "https://sfclb.netlify.app",
+    ]
+
+    print(f"🚀 CORS ACTIVE FOR: {allowed_origins}"),
+
+    CORS(app, resources={r"/*": {"origins": allowed_origins}}, 
+
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

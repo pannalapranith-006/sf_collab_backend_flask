@@ -66,6 +66,8 @@ from .EscrowTransaction import EscrowTransaction
 # Economy Layer 3
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
 
+#SFMeet Search and Retrieval system
+from .sfmeetsearch_models import Meeting, Transcript, Summary, Decision
 from .marketplace_purchase import MarketplacePurchase
 from .mentor import MentorProfile, MentorSession, MentorshipRequest
 

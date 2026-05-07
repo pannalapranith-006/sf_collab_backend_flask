@@ -1,6 +1,5 @@
 """
 MarketplacePurchase Model
-==========================
 Records every completed purchase of a marketplace listing.
 
 Payment flow:
