@@ -1,4 +1,4 @@
-from flask import Flask, request, abort, request, g, send_from_directory, make_response, session
+from flask import Flask, request, abort, g, send_from_directory, make_response, session
 from flask_cors import CORS
 from .extensions import db, migrate, jwt, sess, limiter
 from app.config import Config
@@ -77,6 +77,26 @@ SCHEMA_MIGRATIONS = [
     ("users", "tasks_completed",              "INTEGER DEFAULT 0"),
     ("users", "tasks_on_time",                "INTEGER DEFAULT 0"),
     ("users", "collaborations_count",         "INTEGER DEFAULT 0"),
+
+    
+    ("ideas", "activated_as_startup_id", "INTEGER"),
+
+    # Proofs table — review system
+    ("proofs", "status",         "VARCHAR(20) DEFAULT 'pending'"),
+    ("proofs", "reviewed_by",    "INTEGER"),
+    ("proofs", "reviewed_at",    "DATETIME"),
+    ("proofs", "review_comment", "TEXT"),
+    # Warnings – reference fields
+    ("warnings", "reference_date", "DATE"),
+    ("warnings", "reference_id", "INTEGER"),
+    # ErpTask – due date
+    ("erp_tasks", "due_date", "DATE"),
+    # ErpTask – MVP fields for points calculation
+    ("erp_tasks", "complexity",      "VARCHAR(20)"),
+    ("erp_tasks", "requires_proof",  "BOOLEAN DEFAULT 0"),
+    ("erp_tasks", "quality_rating",  "VARCHAR(20)"),
+    ("execution_points", "approved_at",      "DATETIME"),
+    ("execution_points", "approval_comment", "TEXT"),
 ]
 
 
@@ -196,6 +216,8 @@ def create_app(config_name=None):
 
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    app.config['PROOF_UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads', 'proofs')
+    os.makedirs(app.config['PROOF_UPLOAD_FOLDER'], exist_ok=True)
     
     # AWS S3 Configuration
     app.config["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
@@ -224,7 +246,6 @@ def create_app(config_name=None):
     stripe.api_key = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
-
     print("Initializing CORS with origins:", app.config.get('CORS_ORIGINS', []))
     allowed_origins = app.config.get('CORS_ORIGINS', [])
     CORS(
@@ -239,6 +260,14 @@ def create_app(config_name=None):
         ],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     )
+
+    # CORS initialization – only once, using the origins from config
+    allowed_origins = app.config.get('CORS_ORIGINS', [])
+    print(f"🚀 CORS ACTIVE FOR: {allowed_origins}")
+    CORS(app, resources={r"/*": {"origins": allowed_origins}}, 
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
+         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
     @app.after_request
     def handle_cors(response):
@@ -409,6 +438,5 @@ def create_app(config_name=None):
         payload = request.json
     
         print(event, payload)
-        return '', 200
-
+        return '', 200    
     return app
