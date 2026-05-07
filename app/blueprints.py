@@ -1,3 +1,23 @@
+from .routes import (
+    main_routes, auth_routes, user_routes, profile_routes,
+    idea_routes, knowledge_routes, startup_routes, project_goal_routes,
+    startup_bookmark_routes, startup_member_routes, team_member_routes,
+    team_performance_routes, achievement_routes, calendar_event_routes,
+    chat_routes, conversation_routes, goal_milestone_routes,
+    idea_bookmark_routes, idea_comment_routes, join_request_routes,
+    knowledge_bookmark_routes, knowledge_comment_routes, notification_routes,
+    post_routes, post_comment_routes, post_like_routes, post_media_routes,
+    resource_download_routes, resource_like_routes, resource_view_routes,
+    story_routes, story_view_routes, suggestion_routes, task_routes,
+    user_achievement_routes, access_request_routes, permission_routes,
+    user_permission_routes, friend_request_routes, activity_routes,
+    waitlist_routes, business_plan_routes, image_editor_routes,
+    cf_img_proccessing_routes, feedback_routes, user_roles_routes,
+    application_routes, contribution_ideas_routes, contribution_polls_routes,
+    payment_routes, outreach_routes, connection_routes, user_social_routes,
+    dashboard_routes, pitch_deck_routes, wallet_routes, store_routes,
+    marketplace_routes, readiness_routes, balance_routes, crystal_routes,
+    activation_routes, mentorship_routes
 from app.routes import activation_routes, drive_audit_routes, drive_file_relation_routes, drive_files_routes, drive_meetings_routes, mentorship_routes
 
 from .routes import(
@@ -76,6 +96,8 @@ from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
 from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
 
+#  SF Drive Module 
+from .routes.drive_routes import drive_bp
 
 
 blueprints = [
@@ -143,12 +165,16 @@ blueprints = [
     { "blueprint": activation_routes.activation_bp,                  "url_prefix": '/api/activation' },
     { "blueprint": mentorship_routes.mentorship_bp,                  "url_prefix": '/api/mentorship' },
 
-    # ── ERP Module ────────────────────────────────────────────────────────────
+    #  ERP Module 
     { "blueprint": attendance_bp,       "url_prefix": '/api/attendance' },
     { "blueprint": alerts_bp,           "url_prefix": '/api/erp-alerts' },
     { "blueprint": analytics_bp,        "url_prefix": '/analytics' },
     { "blueprint": activity_monitor_bp, "url_prefix": '/api/activity' },
     { "blueprint": daily_updates_bp,    "url_prefix": '/api/daily-updates' },
+
+    #  SF Drive Module 
+    { "blueprint": drive_bp },
+]
 ]
 blueprints = [ 
 { "blueprint": main_routes.main_bp, "url_prefix": '/'},
