@@ -97,14 +97,6 @@ def generate_tokens(user_id):
     )
     refresh_token_str = create_refresh_token(
         identity=str(user_id),
-        expires_delta=timedelta(
-            days=30
-        ),  # This is not actually used for validation in the current implementation, but we set it for potential future use and to have a clear expiration time for refresh tokens
-        expires_delta=timedelta(hours=72),
-        fresh=True
-    )
-    refresh_token_str = create_refresh_token(
-        identity=str(user_id),
         expires_delta=timedelta(days=30)
     )
     return access_token, refresh_token_str
@@ -191,46 +183,22 @@ def register():
         grant_default_permissions(user.id)
 
         # Create wallet for new user
-                return error_response(f'{field} is required', 400)
-        
-        if User.query.filter_by(email=data['email'].lower()).first():
-            return error_response('Email already registered', 400)
-        
-        user = User(
-            first_name=data['firstName'],
-            last_name=data['lastName'],
-            email=data['email'].lower(),
-            password=generate_password_hash(data['password']),
-            role=data.get('role', 'member'),
-            status='active',
-            founder_plan_id="crowdfunding-founder-explorer",
-            builder_plan_id="crowdfunding-builder-supporter"
-        )
-        db.session.add(user)
-        db.session.commit()
-        
-        grant_default_permissions(user.id)
-        
         from app.services.wallet_service import WalletService
-
         WalletService.get_wallet(user.id)
 
         # Add to general chat
-        
         try:
             ChatConversation.add_to_general_chat(user)
         except Exception as e:
             print(f"Error adding to general chat: {e}")
 
         # ===== SEND NOTIFICATION =====
-        
         try:
             notify_account_created(user.id)
         except Exception as e:
             print(f"Error sending account created notification: {e}")
 
         # Send welcome email
-        
         try:
             brand_name = os.getenv("BRAND_NAME", "SFCollab")
             email_service.send_email(
@@ -249,37 +217,17 @@ def register():
         except Exception as e:
             print(f"Error sending welcome email: {e}")
 
-        # Log activity
-        Activity.log(
-            action="user_registered",
-            user_id=user.id,
-            details=f"User account created at {utc_now_str()}",
-        )
+        # Log activity (commented out - Activity model removed)
+        # Activity.log(
+        #     action="user_registered",
+        #     user_id=user.id,
+        #     details=f"User account created at {utc_now_str()}",
+        # )
 
         # Generate tokens
         access_token, refresh_token = generate_tokens(user.id)
         save_refresh_token(user.id, refresh_token)
 
-        response = jsonify(
-            {
-                "success": True,
-                "message": "Registration successful",
-                "user": get_user_response_data(user),
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
-        )
-
-        
-        print(f"[register] user_registered user_id={user.id} at {utc_now_str()}")
-        
-        access_token, refresh_token = generate_tokens(user.id)
-        save_refresh_token(user.id, refresh_token)
-        
-        # FIX: original had duplicate keys 'access_token', 'refresh_token', and 'user'
-        # in the same dict — Python silently discards all but the last occurrence,
-        # so the first access_token and refresh_token values were never sent.
-        # Collapsed to one clean dict.
         response = jsonify({
             "success": True,
             "message": "Registration successful",
@@ -287,7 +235,7 @@ def register():
             "refresh_token": refresh_token,
             "user": get_user_response_data(user),
         })
-        
+
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
 
@@ -301,8 +249,6 @@ def register():
 # ========================== LOGIN ==========================
 @bp.route("/login", methods=["POST"])
 @limiter.limit("10 per minute")  # Rate limit to prevent brute force
-@bp.route('/login', methods=['POST'])
-@limiter.limit("10 per minute")
 def login():
     """Login user"""
     try:
@@ -312,9 +258,6 @@ def login():
 
         email = data.get("email")
         password = data.get("password")
-        
-        email    = data.get('email')
-        password = data.get('password')
         print(f"DEBUG: Email: {email}, Password provided: {bool(password)}")
 
         if not email or not password:
@@ -343,32 +286,19 @@ def login():
         user.last_login_ip = client_ip
 
         # Update streak via centralized service
-            return error_response('Account is suspended', 403)
-        
-        client_ip  = request.headers.get('X-Forwarded-For', request.remote_addr)
-        user_agent = request.headers.get('User-Agent', '')
-        print(f"DEBUG: Client IP: {client_ip}, User Agent: {user_agent}")
-        
-        user.last_login    = datetime.utcnow()
-        user.last_login_ip = client_ip
-        
         from app.services.streak_service import StreakService
-
         streak_result = StreakService.update_streak(user.id)
         print(f"DEBUG: Streak updated to {streak_result}")
 
-        # Log activity
-        Activity.log(
-            action="user_login",
-            user_id=user.id,
-            details=f"User logged in at {utc_now_str()}",
-        )
-        print(f"DEBUG: Activity logged for user {user.id}")
+        # Log activity (commented out - Activity model removed)
+        # Activity.log(
+        #     action="user_login",
+        #     user_id=user.id,
+        #     details=f"User logged in at {utc_now_str()}",
+        # )
+        print(f"DEBUG: user_login user_id={user.id} at {utc_now_str()}")
 
         # Generate tokens
-        print(f"DEBUG: user_login user_id={user.id} at {utc_now_str()}")
-        print(f"DEBUG: Activity logged for user {user.id}")
-        
         access_token, refresh_token = generate_tokens(user.id)
         print("DEBUG: Tokens generated")
         save_refresh_token(user.id, refresh_token)
@@ -377,19 +307,6 @@ def login():
         user_response = get_user_response_data(user)
         print(f"DEBUG: User response data prepared")
 
-        response = jsonify(
-            {
-                "success": True,
-                "message": "Login successful",
-                "user": user_response,
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
-        )
-        
-        # FIX: original had git conflict markers (=======) sitting inside the
-        # jsonify() call, which is a SyntaxError that crashes Flask on startup.
-        # Removed all conflict markers and kept one clean response dict.
         response = jsonify({
             "success": True,
             "message": "Login successful",
@@ -422,8 +339,6 @@ def send_verification_code():
         user_id = get_jwt_identity()
         user = User.query.get(int(user_id))
 
-        user    = User.query.get(int(user_id))
-        
         if not user or not user.email:
             return error_response("User or email not found", 404)
 
@@ -438,29 +353,21 @@ def send_verification_code():
         email_service.send_email_verification_code(user, code)
         decoded_verification = decode_token(verification_token)
         print("DEBUG: Verification token claims:", decoded_verification)
-        return success_response(
-            {
-                "message": "Verification code sent to email",
-                "verification_token": verification_token,
-            }
-        )
-
         return success_response({
             'message': 'Verification code sent to email',
             'verification_token': verification_token
         })
-        
+
     except Exception as e:
         print(f"DEBUG: Exception in send_verification_code: {str(e)}")
         return error_response(str(e), 500)
 
 
 @bp.route("/verify-code", methods=["POST"])
-@bp.route('/verify-code', methods=['POST'])
 @limiter.limit("10 per minute")
 def verify_code():
-    data           = request.get_json()
-    email          = data.get("email")
+    data = request.get_json()
+    email = data.get("email")
     submitted_code = data.get("code")
 
     if not email or not submitted_code:
@@ -475,7 +382,7 @@ def verify_code():
     if str(user.verification_code) != str(submitted_code):
         return error_response("Invalid code", 400)
 
-    user.is_verified       = True
+    user.is_verified = True
     user.verification_code = None
     db.session.commit()
 
@@ -489,21 +396,13 @@ def verify_code():
 
 # ========================== PASSWORD RESET ==========================
 @bp.route("/forgot-password", methods=["POST"])
-@limiter.limit("5 per hour")  # Limit to prevent abuse
+@limiter.limit("5 per hour")
 def forgot_password():
     """Request password reset"""
     try:
         data = request.get_json()
         email = data.get("email")
 
-@bp.route('/forgot-password', methods=['POST'])
-@limiter.limit("5 per hour")
-def forgot_password():
-    """Request password reset"""
-    try:
-        data  = request.get_json()
-        email = data.get('email')
-        
         if not email:
             return error_response("Email is required", 400)
 
@@ -526,31 +425,22 @@ def forgot_password():
             )
 
             # ===== SEND NOTIFICATION =====
-        if user:
             try:
                 notify_password_reset(user.id)
             except Exception as e:
                 print(f"Error sending password reset notification: {e}")
 
         # Always return success to prevent email enumeration
-        return success_response(
-            {
-                "message": "If an account exists with this email, you will receive password reset instructions."
-            }
-        )
-
-            # TODO: send actual reset email
-        
         return success_response({
             'message': 'If an account exists with this email, you will receive password reset instructions.'
         })
-        
+
     except Exception as e:
         return error_response("Failed to process request", 500)
 
 
 @bp.route("/reset-password", methods=["POST"])
-@limiter.limit("5 per hour")  # Limit to prevent abuse
+@limiter.limit("5 per hour")
 def reset_password():
     """Reset password with token"""
     try:
@@ -586,20 +476,6 @@ def reset_password():
 
         return success_response({"message": "Password reset successfully"})
 
-@bp.route('/reset-password', methods=['POST'])
-@limiter.limit("5 per hour")
-def reset_password():
-    """Reset password with token"""
-    try:
-        data         = request.get_json()
-        token        = data.get('access_token')
-        new_password = data.get('new_password')
-        
-        if not token or not new_password:
-            return error_response('Token and new password are required', 400)
-        
-        return error_response('Password reset not yet implemented', 501)
-        
     except Exception as e:
         return error_response(str(e), 500)
 
@@ -610,11 +486,11 @@ def reset_password():
 def change_password():
     """Change password for logged in user"""
     try:
-        user_id          = get_jwt_identity()
-        data             = request.get_json()
-        current_password = data.get('current_password')
-        new_password     = data.get('new_password')
-        
+        user_id = get_jwt_identity()
+        data = request.get_json()
+        current_password = data.get("current_password")
+        new_password = data.get("new_password")
+
         if not current_password or not new_password:
             return error_response("Current and new password are required", 400)
 
@@ -624,16 +500,16 @@ def change_password():
 
         user.password = generate_password_hash(new_password)
         db.session.commit()
-        
+
         try:
             notify_password_changed(user.id)
         except Exception as e:
             print(f"Error sending password changed notification: {e}")
-        
+
         print(f"[change_password] password_changed user_id={user.id} at {utc_now_str()}")
-        
-        return success_response({'message': 'Password changed successfully'})
-        
+
+        return success_response({"message": "Password changed successfully"})
+
     except Exception as e:
         return error_response(f"Failed to change password: {str(e)}", 500)
 
@@ -652,15 +528,7 @@ def refresh():
             return error_response("User not found", 404)
 
         new_access_token = create_access_token(identity=str(user_id))
-
         response = jsonify({"message": "Token refreshed"})
-        user    = User.query.get(int(user_id))
-        
-        if not user:
-            return error_response('User not found', 404)
-
-        new_access_token = create_access_token(identity=str(user_id))
-        response         = jsonify({"message": "Token refreshed"})
         set_access_cookies(response, new_access_token)
 
         return response
@@ -671,8 +539,8 @@ def refresh():
 
 # ========================== LOGOUT ==========================
 @bp.route("/logout", methods=["POST"])
-@limiter.limit("10 per hour")
 @jwt_required()
+@limiter.limit("10 per hour")
 def logout():
     """Logout user"""
     try:
@@ -682,23 +550,9 @@ def logout():
 
         # Add token to blocklist
         from app.extensions import jwt_redis_blocklist
-
         jwt_redis_blocklist.set(jti, "true", ex=3600)  # Expire after 1 hour
 
         # Delete refresh tokens
-        RefreshToken.query.filter_by(user_id=int(user_id)).delete()
-        db.session.commit()
-
-        # Log activity
-        # Activity.log(
-        #     action="user_logout",
-        #     user_id=int(user_id),
-        #     details=f"User logged out at {utc_now_str()}"
-        # )
-
-        response = jsonify({"message": "Logged out successfully"})
-        unset_jwt_cookies(response)
-
         RefreshToken.query.filter_by(user_id=int(user_id)).delete()
         db.session.commit()
 
@@ -721,20 +575,12 @@ def get_current_user():
 
         if not user:
             return error_response("User not found", 404)
-        # Update streak via centralized service
-        user    = User.query.get(int(user_id))
-        
-        if not user:
-            return error_response('User not found', 404)
 
         from app.services.streak_service import StreakService
-
         StreakService.update_streak(user.id)
+
         return success_response({"user": get_user_response_data(user)})
 
-
-        return success_response({'user': get_user_response_data(user)})
-        
     except Exception as e:
         return error_response(f"Failed to get user: {str(e)}", 500)
 
@@ -759,9 +605,6 @@ def google_callback():
         token = oauth.google.authorize_access_token()
         user_info = token.get("userinfo")
 
-        token     = oauth.google.authorize_access_token()
-        user_info = token.get('userinfo')
-        
         if not user_info:
             return _oauth_error_response("google", "Failed to get user info")
 
@@ -771,9 +614,6 @@ def google_callback():
 
         # Check if user exists
         user = User.query.filter_by(email=email.lower()).first()
-            return _oauth_error_response('google', 'Email not provided')
-        
-        user        = User.query.filter_by(email=email.lower()).first()
         is_new_user = False
 
         if not user:
@@ -789,8 +629,8 @@ def google_callback():
                 status="active",
                 role="member",
                 profile_picture=user_info.get("picture"),
-                founder_plan_id="crowdfunding-founder-explorer",  # Temporary default plan for OAuth users
-                builder_plan_id="crowdfunding-builder-supporter",  # Temporary default plan for OAuth users
+                founder_plan_id="crowdfunding-founder-explorer",
+                builder_plan_id="crowdfunding-builder-supporter"
             )
             db.session.add(user)
             db.session.commit()
@@ -799,15 +639,6 @@ def google_callback():
             grant_default_permissions(user.id)
 
             # Add to general chat
-                status='active',
-                role='member',
-                profile_picture=user_info.get('picture'),
-                founder_plan_id="crowdfunding-founder-explorer",
-                builder_plan_id="crowdfunding-builder-supporter"
-            )
-            db.session.add(user)
-            db.session.commit()
-            grant_default_permissions(user.id)
             try:
                 ChatConversation.add_to_general_chat(user)
             except Exception:
@@ -819,11 +650,6 @@ def google_callback():
         db.session.commit()
 
         # ===== SEND NOTIFICATION FOR NEW ACCOUNT =====
-        
-        user.last_login         = datetime.utcnow()
-        user.last_activity_date = datetime.utcnow().date()
-        db.session.commit()
-        
         if is_new_user:
             try:
                 notify_account_created(user.id)
@@ -843,31 +669,16 @@ def google_callback():
                                 "email": user.email,
                             }
                         },
-                        see_email_template=False,
-                    ),
-                        data={"user": {"name": f"{user.first_name} {user.last_name}", "email": user.email}},
                         see_email_template=False
                     )
                 )
             except Exception:
                 pass
 
-        # Log activity
-        # Activity.log(
-        #     action="user_registered" if is_new_user else "user_login",
-        #     user_id=user.id,
-        #     details=f"OAuth login via Google at {utc_now_str()}"
-        # )
-
         # Generate tokens
         access_token, refresh_token = generate_tokens(user.id)
         save_refresh_token(user.id, refresh_token)
 
-        # Return success to popup
-        
-        access_token, refresh_token = generate_tokens(user.id)
-        save_refresh_token(user.id, refresh_token)
-        
         user_json = jsonify(get_user_response_data(user)).get_data(as_text=True)
         return f"""
             <html>
@@ -904,22 +715,12 @@ def github_callback():
     """Handle GitHub OAuth callback"""
     try:
         token = oauth.github.authorize_access_token()
-
-        # Get user info
         resp = oauth.github.get("user")
         user_info = resp.json()
-
-        # Get emails
         emails_resp = oauth.github.get("user/emails")
         emails = emails_resp.json()
 
         # Find primary email
-        token       = oauth.github.authorize_access_token()
-        resp        = oauth.github.get('user')
-        user_info   = resp.json()
-        emails_resp = oauth.github.get('user/emails')
-        emails      = emails_resp.json()
-        
         primary_email = None
         for email_obj in emails:
             if email_obj.get("primary") and email_obj.get("verified"):
@@ -941,9 +742,6 @@ def github_callback():
 
         # Check if user exists
         user = User.query.filter_by(email=primary_email.lower()).first()
-                return _oauth_error_response('github', 'No email found')
-        
-        user        = User.query.filter_by(email=primary_email.lower()).first()
         is_new_user = False
 
         if not user:
@@ -967,8 +765,8 @@ def github_callback():
                 status="active",
                 role="member",
                 profile_picture=user_info.get("avatar_url"),
-                founder_plan_id="crowdfunding-founder-explorer",  # Temporary default plan for OAuth users
-                builder_plan_id="crowdfunding-builder-supporter",  # Temporary default plan for OAuth users
+                founder_plan_id="crowdfunding-founder-explorer",
+                builder_plan_id="crowdfunding-builder-supporter"
             )
             db.session.add(user)
             db.session.commit()
@@ -977,16 +775,6 @@ def github_callback():
             grant_default_permissions(user.id)
 
             # Add to general chat
-                is_email_verified=('@github.oauth' not in primary_email),
-                status='active',
-                role='member',
-                profile_picture=user_info.get('avatar_url'),
-                founder_plan_id="crowdfunding-founder-explorer",
-                builder_plan_id="crowdfunding-builder-supporter"
-            )
-            db.session.add(user)
-            db.session.commit()
-            grant_default_permissions(user.id)
             try:
                 ChatConversation.add_to_general_chat(user)
             except Exception:
@@ -998,11 +786,6 @@ def github_callback():
         db.session.commit()
 
         # ===== SEND NOTIFICATION FOR NEW ACCOUNT =====
-        
-        user.last_login         = datetime.utcnow()
-        user.last_activity_date = datetime.utcnow().date()
-        db.session.commit()
-        
         if is_new_user:
             try:
                 notify_account_created(user.id)
@@ -1022,31 +805,16 @@ def github_callback():
                                 "email": user.email,
                             }
                         },
-                        see_email_template=False,
-                    ),
-                        data={"user": {"name": f"{user.first_name} {user.last_name}", "email": user.email}},
                         see_email_template=False
                     )
                 )
             except Exception:
                 pass
 
-        # Log activity
-        # Activity.log(
-        #     action="user_registered" if is_new_user else "user_login",
-        #     user_id=user.id,
-        #     details=f"OAuth login via GitHub at {utc_now_str()}"
-        # )
-
         # Generate tokens
         access_token, refresh_token = generate_tokens(user.id)
         save_refresh_token(user.id, refresh_token)
 
-        # Return success to popup
-        
-        access_token, refresh_token = generate_tokens(user.id)
-        save_refresh_token(user.id, refresh_token)
-        
         user_json = jsonify(get_user_response_data(user)).get_data(as_text=True)
         return f"""
             <html>
