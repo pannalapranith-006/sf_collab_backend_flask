@@ -1007,3 +1007,4 @@ def run_alert_checks(workspace_id: int,
 
     logger.info("[%s] Alert run done: %s", run_id, summary)
     return summary
+    skip_weekends      = db.Column(db.Boolean, default=True)

@@ -72,8 +72,42 @@ from .marketplace_purchase import MarketplacePurchase
 from .mentor import MentorProfile, MentorSession, MentorshipRequest
 
 # ── ERP Module ────────────────────────────────────────────────────────────────
+#SFDrive Folder System
+from .sfdrivefolder import Folder
+from .sfdrive_file import SFFile
+#SFDRIVE tagging system
+from .sfdrive_tag import Tag
+from .marketplace_purchase import MarketplacePurchase
+from .mentor import MentorProfile, MentorSession, MentorshipRequest
+
+#  ERP Module 
 from .attendance import Attendance
 from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
 from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
 from .analytics import AnalyticsSnapshot
+from .user import User
+from .workspace_membership import WorkspaceMembership
+from .membership_audit_log import MembershipAuditLog
+from .attendance_log import AttendanceLog
+from .daily_update import DailyUpdate
+from .warning import Warning
+from .erp_task import ErpTask
+from .proof import Proof
+from .execution_point import ExecutionPoint
+from .revenue_pool import RevenuePool
+
+from .erp_activity import UserActivity, ActivityMonitorJobHealth
+from .analytics import AnalyticsSnapshot
+
+#  SF Drive Module 
+from .drive_folder import DriveFolder
+from .drive_file import DriveFile, DriveFileVersion
+from .drive_permission import DriveFilePermission, DriveFileRelation
+#from .analytics import AnalyticsSnapshot
+#from .analytics import AnalyticsSnapshot
+  
+from app.models.drive_file import DriveFile                             
+from app.models.drive_file_relation import DriveFileRelation
+from app.models.drive_audit_log import DriveAuditLog
+from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
