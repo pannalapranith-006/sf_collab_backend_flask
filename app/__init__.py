@@ -1,3 +1,4 @@
+from flask import Flask, request, abort, g, send_from_directory, make_response, session
 from flask import Flask, request, abort, g, send_from_directory, session
 from flask_cors import CORS
 from .extensions import db, migrate, jwt, sess, limiter
@@ -44,6 +45,62 @@ def get_email_service():
 
 SCHEMA_MIGRATIONS = [
     # knowledge table
+    ("knowledge", "file_size_mb",            "FLOAT"),
+    ("knowledge", "image_buffer",            "BLOB"),
+    ("knowledge", "image_content_type",      "VARCHAR(100)"),
+
+    # startups table — lifecycle & execution (Week 1)
+    ("startups",  "lifecycle_state",         "VARCHAR(50) DEFAULT 'active'"),
+    ("startups",  "execution_score",         "FLOAT DEFAULT 0.0"),
+    ("startups",  "milestones_completed",    "INTEGER DEFAULT 0"),
+    ("startups",  "milestones_total",        "INTEGER DEFAULT 0"),
+    ("startups",  "last_activity_at",        "TIMESTAMP"),
+    ("startups",  "activity_score",          "FLOAT DEFAULT 0.0"),
+    ("startups",  "crowdfunding_unlocked",   "BOOLEAN DEFAULT 0"),
+    ("startups",  "crowdfunding_unlocked_at","TIMESTAMP"),
+
+    # ideas table — vision system (Week 1)
+    ("ideas", "vision_state",        "VARCHAR(50) DEFAULT 'public'"),
+    ("ideas", "readiness_score",     "FLOAT DEFAULT 0.0"),
+    ("ideas", "readiness_breakdown", "JSON"),
+    ("ideas", "problem_statement",   "TEXT"),
+    ("ideas", "outcome_goal",        "TEXT"),
+    ("ideas", "risk_level",          "VARCHAR(20) DEFAULT 'medium'"),
+    ("ideas", "required_roles",      "JSON"),
+    ("ideas", "roadmap_items",       "JSON"),
+
+    # users table — fixes missing columns needed by auth/profile flows
+    ("users", "last_seen",                    "DATETIME"),
+    ("users", "last_login_ip",                "VARCHAR(45)"),
+    ("users", "total_revenue",                "FLOAT DEFAULT 0.0"),
+    ("users", "reputation_score",             "FLOAT DEFAULT 0.0"),
+    ("users", "storage_used_mb",              "FLOAT DEFAULT 0.0"),
+    ("users", "stripe_connect_account_id",    "VARCHAR(255)"),
+    ("users", "milestones_completed",         "INTEGER DEFAULT 0"),
+    ("users", "milestones_on_time",           "INTEGER DEFAULT 0"),
+    ("users", "tasks_completed",              "INTEGER DEFAULT 0"),
+    ("users", "tasks_on_time",                "INTEGER DEFAULT 0"),
+    ("users", "collaborations_count",         "INTEGER DEFAULT 0"),
+
+    
+    ("ideas", "activated_as_startup_id", "INTEGER"),
+
+    # Proofs table — review system
+    ("proofs", "status",         "VARCHAR(20) DEFAULT 'pending'"),
+    ("proofs", "reviewed_by",    "INTEGER"),
+    ("proofs", "reviewed_at",    "DATETIME"),
+    ("proofs", "review_comment", "TEXT"),
+    # Warnings – reference fields
+    ("warnings", "reference_date", "DATE"),
+    ("warnings", "reference_id", "INTEGER"),
+    # ErpTask – due date
+    ("erp_tasks", "due_date", "DATE"),
+    # ErpTask – MVP fields for points calculation
+    ("erp_tasks", "complexity",      "VARCHAR(20)"),
+    ("erp_tasks", "requires_proof",  "BOOLEAN DEFAULT 0"),
+    ("erp_tasks", "quality_rating",  "VARCHAR(20)"),
+    ("execution_points", "approved_at",      "DATETIME"),
+    ("execution_points", "approval_comment", "TEXT"),
     ("knowledge", "file_size_mb",             "FLOAT"),
     ("knowledge", "image_buffer",             "BLOB"),
     ("knowledge", "image_content_type",       "VARCHAR(100)"),
@@ -191,6 +248,11 @@ def create_app(config_name=None):
 
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    app.config['PROOF_UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'uploads', 'proofs')
+    os.makedirs(app.config['PROOF_UPLOAD_FOLDER'], exist_ok=True)
+    
+    # AWS S3 Configuration
+    app.config["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
 
     # ── AWS ──────────────────────────────────────────────────────────────────
     app.config["AWS_ACCESS_KEY_ID"]     = os.getenv("AWS_ACCESS_KEY_ID")
@@ -219,6 +281,7 @@ def create_app(config_name=None):
     stripe.api_key                      = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_SECRET_KEY']     = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
+    print("Initializing CORS with origins:", app.config.get('CORS_ORIGINS', []))
 
     # ── CORS ─────────────────────────────────────────────────────────────────
     # FIX: original had two half-merged CORS() calls (SyntaxError).
@@ -234,6 +297,14 @@ def create_app(config_name=None):
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
+
+    # CORS initialization – only once, using the origins from config
+    allowed_origins = app.config.get('CORS_ORIGINS', [])
+    print(f"🚀 CORS ACTIVE FOR: {allowed_origins}")
+    CORS(app, resources={r"/*": {"origins": allowed_origins}}, 
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
+         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
     @app.after_request
     def handle_cors(response):
@@ -370,6 +441,8 @@ Response: {response_preview}
         event   = request.headers.get('X-GitHub-Event')
         payload = request.json
         print(event, payload)
+        return '', 200    
+    return app
         return '', 200
 
     return app  # FIX: removed duplicate `return app` that followed this line
