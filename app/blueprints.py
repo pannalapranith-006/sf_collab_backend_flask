@@ -78,6 +78,9 @@ from .routes import(
     pitch_deck_routes,
     wallet_routes,
     store_routes,
+    # ai_news_routes,  # disabled — requires feedparser (pip install feedparser) and scraper service
+    matchmaking_routes,
+    collaboration_routes,
     marketplace_routes,
     readiness_routes,
     balance_routes,
@@ -92,6 +95,8 @@ from .routes import(
     drive_file_relation_routes,
     drive_meetings_routes,
     drive_audit_routes,
+    activation_routes,
+    mentorship_routes,
 )
 
 # ── ERP Module ────────────────────────────────────────────────────────────────
@@ -242,6 +247,37 @@ blueprints = [
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
 { "blueprint": sfdrivefolder_routes.folder_bp,"url_prefix":'/api/sfdrive/folders'},
 { "blueprint": sfdrivetag_routes.tag_bp,"url_prefix":'/api/sfdrive/tags'},
+    { "blueprint": access_request_routes.access_requests_bp,         "url_prefix": '/api/access-requests' },
+    { "blueprint": permission_routes.permissions_bp,                  "url_prefix": '/api/permissions' },
+    { "blueprint": user_permission_routes.user_permissions_bp,        "url_prefix": '/api/user-permissions' },
+    { "blueprint": friend_request_routes.friend_requests_bp,          "url_prefix": '/api/friend-requests' },
+    { "blueprint": activity_routes.activities_bp,                     "url_prefix": '/api/activities' },
+    { "blueprint": waitlist_routes.waitlist_bp,                       "url_prefix": '/api/waitlist' },
+    { "blueprint": business_plan_routes.plans_bp,                     "url_prefix": '/api/plans' },
+    { "blueprint": image_editor_routes.image_editor_bp,               "url_prefix": '/api/image-editor' },
+    { "blueprint": cf_img_proccessing_routes.cf_bp,                   "url_prefix": '/api/cf' },
+    { "blueprint": feedback_routes.feedback_bp,                       "url_prefix": '/api/feedback' },
+    { "blueprint": user_roles_routes.user_roles_bp,                   "url_prefix": '/api/user-roles' },
+    { "blueprint": application_routes.applications_bp,                "url_prefix": '/api/applications' },
+    { "blueprint": contribution_ideas_routes.bp,                      "url_prefix": '/api/contribution-ideas' },
+    { "blueprint": contribution_polls_routes.poll_bp,                 "url_prefix": '/api/contribution-polls' },
+    { "blueprint": payment_routes.payment_bp,                         "url_prefix": '/api/payments' },
+    { "blueprint": outreach_routes.outreach_bp,                       "url_prefix": '/api/outreach' },
+    { "blueprint": connection_routes.connections_bp,                   "url_prefix": '/api/connections' },
+    { "blueprint": user_social_routes.user_social_bp,                 "url_prefix": '/api/user-social' },
+    { "blueprint": dashboard_routes.dashboard_bp,                     "url_prefix": '/api/dashboard' },
+    { "blueprint": pitch_deck_routes.pitch_decks_bp,                  "url_prefix": '/api/pitch-decks' },
+    { "blueprint": wallet_routes.wallet_bp,                           "url_prefix": '/api/wallet' },
+    { "blueprint": store_routes.store_bp,                             "url_prefix": '/api/store' },
+    { "blueprint": matchmaking_routes.matchmaking_bp,                 "url_prefix": '/api/matchmaking' },
+    { "blueprint": collaboration_routes.collab_bp,                    "url_prefix": '/api/collaboration' },
+    # { "blueprint": ai_news_routes.ai_news_bp,                       "url_prefix": '/api' },
+    { "blueprint": marketplace_routes.marketplace_bp,                 "url_prefix": '/api/marketplace' },
+    { "blueprint": readiness_routes.readiness_bp,                     "url_prefix": '/api/readiness' },
+    { "blueprint": balance_routes.balance_bp,                         "url_prefix": '/api/balance' },
+    { "blueprint": crystal_routes.crystals_bp,                        "url_prefix": '/api/crystals' },
+    { "blueprint": activation_routes.activation_bp,                   "url_prefix": '/api/activation' },
+    { "blueprint": mentorship_routes.mentorship_bp,                   "url_prefix": '/api/mentorship' },
 
 ]
     # ── ERP Module ────────────────────────────────────────────────────────────
@@ -332,4 +368,10 @@ blueprints = [
 { "blueprint": drive_file_relation_routes.drive_file_relation_bp, "url_prefix": '/api/drive/file-relations' },
 { "blueprint": drive_meetings_routes.drive_meetings_bp, "url_prefix": "/api/drive" },
 { "blueprint": drive_audit_routes.drive_audit_bp, "url_prefix": "/api/drive/audit" },
+]
+    { "blueprint": attendance_bp,        "url_prefix": '/api/attendance' },
+    { "blueprint": alerts_bp,            "url_prefix": '/api/erp-alerts' },
+    { "blueprint": analytics_bp,         "url_prefix": '/analytics' },
+    { "blueprint": activity_monitor_bp,  "url_prefix": '/api/activity' },
+    { "blueprint": daily_updates_bp,     "url_prefix": '/api/daily-updates' },
 ]
