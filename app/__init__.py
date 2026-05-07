@@ -366,8 +366,6 @@ def create_app(config_name=None):
             "X-CSRF-TOKEN",
         ],
 
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
-
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
@@ -525,8 +523,7 @@ Response: {response_preview}
     # start_scheduler(app)
     # print("✓ Scheduler started")
 
-    @app.route("/uploads/<path:filename>")
-        app.register_blueprint(blueprint["blueprint"], url_prefix=blueprint["url_prefix"])
+    app.register_blueprint(blueprint["blueprint"], url_prefix=blueprint["url_prefix"])
 
     # AI news scheduler disabled — needs feedparser: pip install feedparser
     # start_scheduler(app)
@@ -583,15 +580,3 @@ Response: {response_preview}
         return "", 200
 
     return app
-
-    return app
-        sha_name, signature = signature.split('=')
-        mac = hmac.new(os.getenv('WEBHOOK'), msg=request.data, digestmod=hashlib.sha256)
-        if not hmac.compare_digest(mac.hexdigest(), signature):
-            abort(403, "Invalid signature")
-        event   = request.headers.get('X-GitHub-Event')
-        payload = request.json
-        print(event, payload)
-        return '', 200
-
-    return app  # FIX: removed duplicate `return app` that followed this line
