@@ -1622,6 +1622,9 @@ def get_my_startup_invitation_options(startup_id):
 def get_my_startup_invitation(startup_id):
     """
     Get the current user's pending invitation for a specific startup.
+
+    This is for regular (non-admin) users to check if they have been invited.
+
     No manager role required — users can only see their own invitation.
     """
     current_user_id = get_jwt_identity()

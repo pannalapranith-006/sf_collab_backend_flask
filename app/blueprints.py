@@ -45,8 +45,6 @@ from .routes import (
     friend_request_routes,
     waitlist_routes,
     feedback_routes,
-
-=======
     # scraper_routes,
 
     user_roles_routes,
@@ -60,14 +58,20 @@ from .routes import (
     pitch_deck_routes,
     wallet_routes,
     store_routes,
+    ai_news_routes,
+    #! removed background_remover_route,
+    #! removed anime_converter_route
+    #! removed image_logo_generator_route,
+    #! removed business_plan_route,
+    #! removed qwen_chat_route
     marketplace_routes,
     readiness_routes,
     balance_routes,
     crystal_routes,
+
+    mentorship_routes
     activation_routes,
     mentorship_routes,
-
-=======
     
 
 )
@@ -150,7 +154,7 @@ blueprints = [
     { "blueprint": analytics_bp,        "url_prefix": '/analytics' },
     { "blueprint": activity_monitor_bp, "url_prefix": '/api/activity' },
     { "blueprint": daily_updates_bp,    "url_prefix": '/api/daily-updates' },
-=======
+
 blueprints = [ 
 { "blueprint": main_routes.main_bp, "url_prefix": '/'},
 { "blueprint": auth_routes.bp, "url_prefix": '/api/auth'},
@@ -221,13 +225,18 @@ blueprints = [
 { "blueprint": marketplace_routes.marketplace_bp, "url_prefix": '/api/marketplace'},
 
 # { "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
-=======
+
 #{ "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
 
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
+
+{ "blueprint": mentorship_routes.mentorship_bp, "url_prefix": '/api/mentorship' },
+]
+
 { "blueprint": activation_routes.activation_bp, "url_prefix": '/api/activation' },
 { "blueprint": mentorship_routes.mentorship_bp, "url_prefix": '/api/mentorship' },
 
 ]
+

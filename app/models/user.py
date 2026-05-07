@@ -115,6 +115,7 @@ class User(db.Model):
         cascade='all, delete-orphan'
     )
     
+
     builder_profile = db.relationship(
         'BuilderProfile',
         back_populates='user',
@@ -122,6 +123,7 @@ class User(db.Model):
         cascade='all, delete-orphan'
     )
     
+
     # =========================================================================
     # WALLET & STORE RELATIONSHIPS - ADD THESE TO YOUR USER MODEL
     # =========================================================================
