@@ -66,20 +66,27 @@ from .EscrowTransaction import EscrowTransaction
 # Economy Layer 3
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
 
+#SFDrive Folder System
+from .sfdrivefolder import Folder
+from .sfdrive_file import SFFile
+#SFDRIVE tagging system
+from .sfdrive_tag import Tag
 from .marketplace_purchase import MarketplacePurchase
 from .mentor import MentorProfile, MentorSession, MentorshipRequest
 
-# ── ERP Module ────────────────────────────────────────────────────────────────
+#  ERP Module 
 from .attendance import Attendance
 from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
 from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
+from .analytics import AnalyticsSnapshot
 
-# ── SF Meet ───────────────────────────────────────────────────────────────────
-from .meet_meeting import MeetMeeting
-from .meet_participant import MeetParticipant
-from .meet_artifact import MeetArtifact
-from .meet_decision import MeetDecision
-from .meet_action_item import MeetActionItem
-from .meet_annotation import MeetAnnotation
-from .meet_audit_log import MeetAuditLog
+#  SF Drive Module 
+from .drive_folder import DriveFolder
+from .drive_file import DriveFile, DriveFileVersion
+from .drive_permission import DriveFilePermission, DriveFileRelation
+
+  
+from app.models.drive_file import DriveFile                             
+from app.models.drive_file_relation import DriveFileRelation
+from app.models.drive_audit_log import DriveAuditLog

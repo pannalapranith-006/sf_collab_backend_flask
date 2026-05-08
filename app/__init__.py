@@ -16,6 +16,8 @@ import json
 from app.services.email_service import EmailService
 from flask_session import Session
 import stripe
+from app.services.ai_news.scheduler import start_scheduler
+#from app.routes.analytics import analytics_bp
 # FIX: removed — feedparser not installed, ai_news disabled
 # from app.services.ai_news.scheduler import start_scheduler
 # FIX: removed — app.routes.analytics does not exist; analytics_bp is
@@ -132,6 +134,9 @@ def create_app(config_name=None):
     """Create and configure Flask application."""
 
     app = Flask(__name__, instance_relative_config=True)
+    #app.register_blueprint(analytics_bp)
+    # REMOVED BROKEN PREFLIGHT HANDLER - Flask-CORS handles this automatically
+    
     # FIX: app.register_blueprint(analytics_bp) removed — analytics_bp import
     #      was deleted above; it is already in the blueprints list
 
