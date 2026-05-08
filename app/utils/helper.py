@@ -1,9 +1,9 @@
 from flask import Blueprint, request, jsonify
-from datetime import datetime, timezone
+from datetime import datetime
 
 def utc_now_str() -> str:
     """Return current UTC time in ISO 8601 format."""
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
 
 def paginate(query, page=1, per_page=10):
     """Helper function for pagination"""
