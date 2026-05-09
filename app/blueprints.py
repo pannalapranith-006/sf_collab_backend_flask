@@ -71,6 +71,7 @@ from .routes import (
 from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
 from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
+from .routes.erpDocument_routes import documents_bp
 
 # ── SF Drive Module ───────────────────────────────────────────────────────────
 # FIX: drive route modules (drive_files_routes, drive_file_relation_routes, etc.)
@@ -170,6 +171,7 @@ blueprints = [
     { "blueprint": analytics_bp,         "url_prefix": '/analytics' },
     { "blueprint": activity_monitor_bp,  "url_prefix": '/api/activity' },
     { "blueprint": daily_updates_bp,     "url_prefix": '/api/daily-updates' },
+    { "blueprint": documents_bp,         "url_prefix": '/api' },
 
     # ── SF Drive Module ───────────────────────────────────────────────────────
     { "blueprint": drive_bp, "url_prefix": '/api/drive' },
