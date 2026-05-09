@@ -97,6 +97,11 @@ class User(db.Model):
     # Storage
     storage_used_mb = db.Column(db.Float, default=0.0, nullable=False)
     
+    # email verification
+    verification_code = db.Column(db.String(10), nullable=True)
+    verification_code_expires_at = db.Column(db.DateTime, nullable=True)
+
+
     # ========== RELATIONSHIPS ==========
     
      # Marketplace seller profile (one-to-one)
@@ -507,6 +512,38 @@ class User(db.Model):
         lazy='dynamic',
         cascade='all, delete-orphan',
         foreign_keys='IdeaCommentLike.user_id'
+    )
+
+    # =========================
+    # SF DRIVE RELATIONSHIPS
+    # =========================
+
+    created_folders = db.relationship(
+        "DriveFolder",
+        back_populates="creator",
+        foreign_keys="DriveFolder.created_by",
+        cascade="all, delete-orphan"
+    )
+
+    created_drive_files = db.relationship(
+        "DriveFile",
+        back_populates="creator",
+        foreign_keys="DriveFile.created_by",
+        cascade="all, delete-orphan"
+    )
+
+    uploaded_file_versions = db.relationship(
+        "DriveFileVersion",
+        back_populates="creator",
+        foreign_keys="DriveFileVersion.created_by",
+        cascade="all, delete-orphan"
+    )
+
+    drive_permissions_list = db.relationship(
+        "DriveFilePermission",
+        back_populates="user",
+        foreign_keys="DriveFilePermission.user_id",
+        cascade="all, delete-orphan"
     )
     # ========== HELPER FUNCTIONS ==========
     

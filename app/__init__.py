@@ -1,4 +1,4 @@
-from flask import Flask, request, abort, request, g, send_from_directory, make_response, session
+from flask import Flask, app, request, abort, request, g, send_from_directory, make_response, session
 from flask_cors import CORS
 from .extensions import db, migrate, jwt, sess, limiter
 from app.config import Config
@@ -237,12 +237,9 @@ def create_app(config_name=None):
 
 
     print("Initializing CORS with origins:", app.config.get('CORS_ORIGINS', []))
-    allowed_origins = app.config.get('CORS_ORIGINS', [])
-    CORS(
-        app,
-        resources={r"/*": {"origins": allowed_origins}},
+    # Hard‑coded allowed origins (keeps existing behaviour)
     allowed_origins = [
-        "http://localhost:5173", 
+        "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://staging.sfcollab.com",
         "https://sfcollab.com",
@@ -251,8 +248,7 @@ def create_app(config_name=None):
 
     print(f"🚀 CORS ACTIVE FOR: {allowed_origins}")
 
-    CORS(app, resources={r"/*": {"origins": allowed_origins}}, 
-
+    CORS(app, resources={r"/*": {"origins": allowed_origins}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
@@ -268,19 +264,15 @@ def create_app(config_name=None):
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Credentials"] = "true"
-
         response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-
-
         response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
         response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Credentials"] = "true"
         # We let the CORS(app) block above handle the headers dynamically.
         # This keeps the function but removes the hardcoded 'staging' override.
-
         # We let the CORS(app) block above handle the headers dynamically.
         # This keeps the function but removes the hardcoded staging override.
         return response
@@ -445,11 +437,5 @@ def create_app(config_name=None):
     
         print(event, payload)
         return '', 200
-    
-
 
     return app
-
-
-    return app
-
