@@ -33,8 +33,12 @@ def _uid():
 def _parse_workspace_id(source='json'):
     raw = (request.get_json(silent=True) or {}).get('workspace_id') \
         if source == 'json' else request.args.get('workspace_id')
+    # If not provided, fall back to the authenticated user's own ID
     if not raw:
-        return None, (jsonify({'error': 'workspace_id is required'}), 400)
+        try:
+            return int(get_jwt_identity()), None
+        except Exception:
+            return None, (jsonify({'error': 'workspace_id is required and could not be inferred'}), 400)
     try:
         return int(raw), None
     except (ValueError, TypeError):
@@ -470,6 +474,25 @@ def list_updates():
         limit   = min(int(request.args.get('limit', 50)), 200)
         records = (DailyUpdate.query
                    .filter_by(workspace_id=workspace_id)
+                   .order_by(DailyUpdate.created_at.desc())
+                   .limit(limit).all())
+        return jsonify({'updates': [r.to_dict() for r in records]}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@daily_updates_bp.route('/mine', methods=['GET'])
+@jwt_required()
+def my_updates():
+    """Fetch the current user's own daily updates — no admin required."""
+    try:
+        user_id      = _uid()
+        workspace_id, err = _parse_workspace_id('args')
+        if err: return err
+
+        limit   = min(int(request.args.get('limit', 50)), 200)
+        records = (DailyUpdate.query
+                   .filter_by(user_id=user_id, workspace_id=workspace_id)
                    .order_by(DailyUpdate.created_at.desc())
                    .limit(limit).all())
         return jsonify({'updates': [r.to_dict() for r in records]}), 200
