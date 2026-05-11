@@ -21,10 +21,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import Index, UniqueConstraint, and_, func, inspect as sa_inspect
 from sqlalchemy.orm import joinedload
 
-from app.extensions import limiter
-from app.extensions import db
-from app.models.alert import Alert
-from app.models.user import User
+from app.extensions import limiter, db
+from app.models import Alert, User
 
 
 logger = logging.getLogger(__name__)

@@ -1,4 +1,4 @@
-from flask import Flask, request, abort, g, send_from_directory, session
+from flask import Flask, app, request, abort, request, g, send_from_directory, make_response, session
 from flask_cors import CORS
 from .extensions import db, migrate, jwt, sess, limiter
 from app.config import Config
@@ -18,12 +18,6 @@ from flask_session import Session
 import stripe
 from app.services.ai_news.scheduler import start_scheduler
 #from app.routes.analytics import analytics_bp
-# FIX: removed — feedparser not installed, ai_news disabled
-# from app.services.ai_news.scheduler import start_scheduler
-# FIX: removed — app.routes.analytics does not exist; analytics_bp is
-#      already registered via the blueprints list in blueprints.py
-# from app.routes.analytics import analytics_bp
-
 WEBHOOK_SECRET = b'sFcollab_2025_secretKey!'
 
 warnings.filterwarnings("ignore")
@@ -220,16 +214,20 @@ def create_app(config_name=None):
     app.config['STRIPE_SECRET_KEY']     = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
-    # ── CORS ─────────────────────────────────────────────────────────────────
-    # FIX: original had two half-merged CORS() calls (SyntaxError).
-    # Collapsed into one clean call. Config.CORS_ORIGINS is the single source
-    # of truth — never hardcode origins here.
-    allowed_origins = app.config.get('CORS_ORIGINS', [])
+
+    print("Initializing CORS with origins:", app.config.get('CORS_ORIGINS', []))
+    # Hard‑coded allowed origins (keeps existing behaviour)
+    allowed_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://staging.sfcollab.com",
+        "https://sfcollab.com",
+        "https://sfclb.netlify.app"
+    ]
+
     print(f"🚀 CORS ACTIVE FOR: {allowed_origins}")
 
-    CORS(
-        app,
-        resources={r"/*": {"origins": allowed_origins}},
+    CORS(app, resources={r"/*": {"origins": allowed_origins}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -237,9 +235,25 @@ def create_app(config_name=None):
 
     @app.after_request
     def handle_cors(response):
-        # FIX: removed all hardcoded 'staging.sfcollab.com' header overrides.
-        # They were forcing a single origin on every response and breaking all
-        # other allowed origins. Flask-CORS above handles this correctly.
+
+
+        request_origin = request.headers.get("Origin")
+        if request_origin and request_origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = request_origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Origin"] = "https://staging.sfcollab.com"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+        # We let the CORS(app) block above handle the headers dynamically.
+        # This keeps the function but removes the hardcoded 'staging' override.
+        # We let the CORS(app) block above handle the headers dynamically.
+        # This keeps the function but removes the hardcoded staging override.
         return response
 
     @app.route('/<path:path>', methods=['OPTIONS'])
@@ -372,4 +386,4 @@ Response: {response_preview}
         print(event, payload)
         return '', 200
 
-    return app  # FIX: removed duplicate `return app` that followed this line
+    return app

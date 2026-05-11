@@ -1,5 +1,5 @@
 from datetime import datetime
-from app.extensions import db
+from app import db
 
 class SFFile(db.Model):
     __tablename__ = 'sf_files'

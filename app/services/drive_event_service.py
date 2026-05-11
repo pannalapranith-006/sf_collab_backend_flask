@@ -1,18 +1,19 @@
-"""
-Central event emitter for all Drive-related actions.
-Currently synchronously writes to the audit log.
-Built to be extended with async queues later.
-"""
+from app.extensions import db
+from app.models.drive_audit_log import DriveAuditLog
+from datetime import datetime
 
-from app.services.audit_service import log_action
-
+def log_action(file_id: int, action: str, performed_by: int = None, metadata: dict = None):
+    """Directly write an audit log entry."""
+    entry = DriveAuditLog(
+        file_id=file_id,
+        action=action,
+        performed_by=performed_by,
+        event_metadata=metadata,
+        created_at=datetime.utcnow()
+    )
+    db.session.add(entry)
 
 def emit_event(event_type: str, file_id: int, actor_id: int, metadata: dict = None):
-    """
-    Single entry point for every Drive event.
-    Handles mapping from event_type to audit action and extra data.
-    """
-    # Keep mapping of event_type to log_action's action string
     action_map = {
         "file_uploaded": "upload",
         "file_deleted": "delete",
@@ -21,15 +22,20 @@ def emit_event(event_type: str, file_id: int, actor_id: int, metadata: dict = No
         "file_marked_canonical": "mark_canonical",
         "file_linked_to_meeting": "linked_to_meeting",
         "file_unlinked_from_meeting": "unlinked_from_meeting",
-        "file_linked_to_entity": "linked",   # will be customised below
+        "file_linked_to_entity": "linked",
     }
 
-    action = action_map.get(event_type, event_type)  # fallback to raw type
+    action = action_map.get(event_type, event_type)
 
-    # custom handling for generic entity linking
-    if event_type == "file_linked_to_entity":
-        if metadata and "relation_type" in metadata:
-            action = f"linked_to_{metadata['relation_type']}"
-        # metadata already contains entity info
+    if event_type == "file_linked_to_entity" and metadata and "relation_type" in metadata:
+        action = f"linked_to_{metadata['relation_type']}"
 
-    log_action(file_id=file_id, action=action, performed_by=actor_id, metadata=metadata)
+    audit = DriveAuditLog(
+        file_id=file_id,
+        action=action,
+        performed_by=actor_id,
+        event_metadata=metadata or {}
+    )
+
+    db.session.add(audit)
+    db.session.commit()

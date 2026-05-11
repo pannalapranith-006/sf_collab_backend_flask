@@ -216,9 +216,9 @@ def register():
         response = jsonify({
             "success": True,
             "message": "Registration successful",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
             "user": get_user_response_data(user),
+            "access_token": access_token,
+            "refresh_token": refresh_token
         })
         
         set_access_cookies(response, access_token)
@@ -288,9 +288,9 @@ def login():
         response = jsonify({
             "success": True,
             "message": "Login successful",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
             "user": user_response,
+            "access_token": access_token,
+            "refresh_token": refresh_token
         })
 
         set_access_cookies(response, access_token)
@@ -321,6 +321,9 @@ def send_verification_code():
             return error_response('User or email not found', 404)
         
         code = random.randint(100000, 999999)
+        user.verification_code = str(code)
+        user.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=10)
+        db.session.commit()
         verification_token = create_access_token(
             identity=str(user.id),
             expires_delta=timedelta(minutes=10),
@@ -360,7 +363,8 @@ def verify_code():
     if str(user.verification_code) != str(submitted_code):
         return error_response("Invalid code", 400)
 
-    user.is_verified       = True
+    user.is_verified = True
+    user.is_email_verified = True
     user.verification_code = None
     db.session.commit()
 

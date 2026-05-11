@@ -1,3 +1,4 @@
+from app.extensions import db
 from .user import User
 from .userAchievement import UserAchievement
 from .startup import Startup, StartupView
@@ -70,29 +71,27 @@ from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
 from .marketplace_purchase import MarketplacePurchase
 from .mentor import MentorProfile, MentorSession, MentorshipRequest
 
-# ── SF Drive (old) — tables: sf_folders, sf_files, sf_tags ───────────────────
-# FIX: these use DIFFERENT table names from the new drive_* module:
-#   sfdrivefolder.Folder  → sf_folders   (NOT drive_folders)
-#   sfdrive_file.SFFile   → sf_files     (NOT drive_files)
-#   sfdrive_tag.Tag       → sf_tags      (NOT drive_*)
-# Safe to import — no table conflict with new Drive module.
-from .sfdrivefolder import Folder
-from .sfdrive_file import SFFile
-from .sfdrive_tag import Tag
-
-# ── SF Drive (new) — tables: drive_folders, drive_files, etc. ────────────────
-from .drive_folder import DriveFolder
-# from .drive_file import DriveFile, DriveFileVersion  ← DO NOT import here
-from .drive_permission import DriveFilePermission
-# FIX: DriveFileRelation lives in drive_file_relation.py, not drive_permission.py
-from .drive_file_relation import DriveFileRelation
-from .drive_audit_log import DriveAuditLog
-
-# ── ERP Module ────────────────────────────────────────────────────────────────
+#  ERP Module 
 from .attendance import Attendance
 from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
-from .erpDocumentStorage import Document
-# FIX: AnalyticsSnapshot imported once from its canonical source (erp_activity).
-# Removed all duplicate imports from .analytics and redundant erp_activity lines.
 from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
+from .erp_activity import UserActivity, ActivityMonitorJobHealth
+#from .analytics import AnalyticsSnapshot
+
+#  SF Drive Module 
+# ... existing imports ...
+from .drive_file import DriveFile, DriveFileVersion
+from .drive_folder import DriveFolder
+from .drive_permission import DriveFilePermission
+from .drive_file_relation import DriveFileRelation
+from .drive_audit_log import DriveAuditLog
+# Legacy SF Drive models – keep commented unless used elsewhere
+# from .sfdrive_file import SFFile
+# from .sfdrivefolder import Folder
+# from .sfdrive_tag import Tag
+
+# Legacy SF Drive models – keep commented unless needed elsewhere
+# from .sfdrive_file import SFFile
+# from .sfdrivefolder import Folder
+# from .sfdrive_tag import Tag
