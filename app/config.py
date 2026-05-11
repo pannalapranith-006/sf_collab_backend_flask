@@ -3,8 +3,6 @@ from datetime import timedelta
 from dotenv import load_dotenv
 import stripe
 
-from app.routes.ai_routes import BASE_DIR
-
 # ======================================================
 # ENV FILE LOADING PRIORITY
 # .env.local > .env.development > .env
@@ -89,7 +87,6 @@ class Config:
     BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads", "chat_files")
     AVATAR_UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads", "chat_avatars")
-    PROOF_UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads", "proofs")
 
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS = {
@@ -199,9 +196,6 @@ class Config:
     # Get this from: Stripe Dashboard → Settings → Connect settings → Client ID
     STRIPE_CONNECT_CLIENT_ID = os.getenv("STRIPE_CONNECT_CLIENT_ID")
 
-    # Proof uploads
-    PROOF_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'proofs')
-
     @staticmethod
     def init_stripe():
         if not Config.STRIPE_SECRET_KEY:
@@ -275,6 +269,7 @@ class ProductionConfig(Config):
 # ======================================================
 class StagingConfig(ProductionConfig):
     DEBUG = False
+
 
 # ======================================================
 # CONFIG MAP

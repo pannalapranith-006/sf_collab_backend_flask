@@ -1,19 +1,17 @@
 import enum
-import uuid
 from datetime import datetime
 
 from sqlalchemy import (
     Boolean, Column, DateTime, Enum, ForeignKey,
-    String, Text, JSON, Index
+    Integer, String, Text, JSON, Index
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.extensions import db
 
 
 # ---------------------------------------------------------------------------
-# Enums
+# Enums (unchanged)
 # ---------------------------------------------------------------------------
 
 class MeetingType(str, enum.Enum):
@@ -115,24 +113,24 @@ class AnnotationType(str, enum.Enum):
 # ---------------------------------------------------------------------------
 
 class MeetMeeting(db.Model):
-    __tablename__ = "meet_meeting"
+    __tablename__ = "meet_meetings"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Identity
     title        = Column(String(255), nullable=False)
     meeting_type = Column(Enum(MeetingType), nullable=False)
 
-    # Ownership
-    owner_user_id    = Column(UUID(as_uuid=True), nullable=False, index=True)
+    # Ownership (now integers)
+    owner_user_id    = Column(Integer, nullable=False, index=True)
     owner_scope_type = Column(Enum(OwnerScopeType), nullable=False)
-    owner_scope_id   = Column(UUID(as_uuid=True), nullable=False)
+    owner_scope_id   = Column(Integer, nullable=False)
 
     # Workspace links
-    workspace_id    = Column(UUID(as_uuid=True), nullable=True, index=True)
-    startup_id      = Column(UUID(as_uuid=True), nullable=True, index=True)
-    organization_id = Column(UUID(as_uuid=True), nullable=True, index=True)
-    vision_id       = Column(UUID(as_uuid=True), nullable=True)
+    workspace_id    = Column(Integer, nullable=True, index=True)
+    startup_id      = Column(Integer, nullable=True, index=True)
+    organization_id = Column(Integer, nullable=True, index=True)
+    vision_id       = Column(Integer, nullable=True)
 
     # Linked entity ID arrays stored as JSON
     linked_milestone_ids   = Column(JSON, nullable=False, default=list)
@@ -157,14 +155,14 @@ class MeetMeeting(db.Model):
     annotation_enabled    = Column(Boolean, nullable=False, default=False)
     waiting_room_enabled  = Column(Boolean, nullable=False, default=False)
 
-    # Optional linked docs / files
-    agenda_doc_id      = Column(UUID(as_uuid=True), nullable=True)
-    live_notes_doc_id  = Column(UUID(as_uuid=True), nullable=True)
-    summary_doc_id     = Column(UUID(as_uuid=True), nullable=True)
-    transcript_file_id = Column(UUID(as_uuid=True), nullable=True)
-    recording_file_id  = Column(UUID(as_uuid=True), nullable=True)
-    whiteboard_file_id = Column(UUID(as_uuid=True), nullable=True)
-    followup_meeting_id = Column(UUID(as_uuid=True), nullable=True)
+    # Optional linked docs / files (IDs as integers)
+    agenda_doc_id      = Column(Integer, nullable=True)
+    live_notes_doc_id  = Column(Integer, nullable=True)
+    summary_doc_id     = Column(Integer, nullable=True)
+    transcript_file_id = Column(Integer, nullable=True)
+    recording_file_id  = Column(Integer, nullable=True)
+    whiteboard_file_id = Column(Integer, nullable=True)
+    followup_meeting_id = Column(Integer, nullable=True)
 
     # Guest policy
     external_guest_policy = Column(String(64), nullable=True)
@@ -185,9 +183,9 @@ class MeetMeeting(db.Model):
     audit_logs   = relationship("MeetAuditLog",    back_populates="meeting", cascade="all, delete-orphan")
 
     __table_args__ = (
-        Index("ix_meet_meeting_startup_status", "startup_id", "status"),
-        Index("ix_meet_meeting_owner_scope",    "owner_scope_type", "owner_scope_id"),
-        Index("ix_meet_meeting_scheduled",      "scheduled_start_at"),
+        Index("ix_meet_meetings_startup_status", "startup_id", "status"),
+        Index("ix_meet_meetings_owner_scope",    "owner_scope_type", "owner_scope_id"),
+        Index("ix_meet_meetings_scheduled",      "scheduled_start_at"),
     )
 
     def __repr__(self):
@@ -195,16 +193,16 @@ class MeetMeeting(db.Model):
 
     def to_dict(self):
         return {
-            "id":                    str(self.id),
+            "id":                    self.id,
             "title":                 self.title,
             "meeting_type":          self.meeting_type.value,
-            "owner_user_id":         str(self.owner_user_id),
+            "owner_user_id":         self.owner_user_id,
             "owner_scope_type":      self.owner_scope_type.value,
-            "owner_scope_id":        str(self.owner_scope_id),
-            "workspace_id":          str(self.workspace_id) if self.workspace_id else None,
-            "startup_id":            str(self.startup_id) if self.startup_id else None,
-            "organization_id":       str(self.organization_id) if self.organization_id else None,
-            "vision_id":             str(self.vision_id) if self.vision_id else None,
+            "owner_scope_id":        self.owner_scope_id,
+            "workspace_id":          self.workspace_id,
+            "startup_id":            self.startup_id,
+            "organization_id":       self.organization_id,
+            "vision_id":             self.vision_id,
             "linked_milestone_ids":  self.linked_milestone_ids,
             "linked_task_ids":       self.linked_task_ids,
             "linked_crm_entity_ids": self.linked_crm_entity_ids,
@@ -220,13 +218,13 @@ class MeetMeeting(db.Model):
             "live_notes_enabled":    self.live_notes_enabled,
             "annotation_enabled":    self.annotation_enabled,
             "waiting_room_enabled":  self.waiting_room_enabled,
-            "agenda_doc_id":         str(self.agenda_doc_id) if self.agenda_doc_id else None,
-            "live_notes_doc_id":     str(self.live_notes_doc_id) if self.live_notes_doc_id else None,
-            "summary_doc_id":        str(self.summary_doc_id) if self.summary_doc_id else None,
-            "transcript_file_id":    str(self.transcript_file_id) if self.transcript_file_id else None,
-            "recording_file_id":     str(self.recording_file_id) if self.recording_file_id else None,
-            "whiteboard_file_id":    str(self.whiteboard_file_id) if self.whiteboard_file_id else None,
-            "followup_meeting_id":   str(self.followup_meeting_id) if self.followup_meeting_id else None,
+            "agenda_doc_id":         self.agenda_doc_id,
+            "live_notes_doc_id":     self.live_notes_doc_id,
+            "summary_doc_id":        self.summary_doc_id,
+            "transcript_file_id":    self.transcript_file_id,
+            "recording_file_id":     self.recording_file_id,
+            "whiteboard_file_id":    self.whiteboard_file_id,
+            "followup_meeting_id":   self.followup_meeting_id,
             "external_guest_policy": self.external_guest_policy,
             "metadata_json":         self.metadata_json,
             "created_at":            self.created_at.isoformat(),
@@ -239,17 +237,17 @@ class MeetMeeting(db.Model):
 # ---------------------------------------------------------------------------
 
 class MeetParticipant(db.Model):
-    __tablename__ = "meet_participant"
+    __tablename__ = "meet_participants"
 
-    id                = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    meeting_id        = Column(UUID(as_uuid=True), ForeignKey("meet_meeting.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id           = Column(UUID(as_uuid=True), nullable=True, index=True)  # null for external guests
+    id                = Column(Integer, primary_key=True, autoincrement=True)
+    meeting_id        = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id           = Column(Integer, nullable=True, index=True)  # null for external guests
     guest_email       = Column(String(255), nullable=True)
     role_in_meeting   = Column(Enum(ParticipantRole), nullable=False, default=ParticipantRole.ATTENDEE)
     attendance_status = Column(Enum(AttendanceStatus), nullable=False, default=AttendanceStatus.INVITED)
     joined_at         = Column(DateTime(timezone=True), nullable=True)
     left_at           = Column(DateTime(timezone=True), nullable=True)
-    invited_by_user_id = Column(UUID(as_uuid=True), nullable=True)
+    invited_by_user_id = Column(Integer, nullable=True)
 
     meeting = relationship("MeetMeeting", back_populates="participants")
 
@@ -262,14 +260,14 @@ class MeetParticipant(db.Model):
 # ---------------------------------------------------------------------------
 
 class MeetArtifact(db.Model):
-    __tablename__ = "meet_artifact"
+    __tablename__ = "meet_artifacts"
 
-    id                    = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    meeting_id            = Column(UUID(as_uuid=True), ForeignKey("meet_meeting.id", ondelete="CASCADE"), nullable=False, index=True)
+    id                    = Column(Integer, primary_key=True, autoincrement=True)
+    meeting_id            = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
     artifact_type         = Column(Enum(ArtifactType), nullable=False)
-    drive_file_id         = Column(UUID(as_uuid=True), nullable=True)
+    drive_file_id         = Column(Integer, nullable=True)
     source_timestamp_range = Column(JSON, nullable=True)   # {"start": seconds, "end": seconds}
-    created_by_user_id    = Column(UUID(as_uuid=True), nullable=True)
+    created_by_user_id    = Column(Integer, nullable=True)
     ai_generated          = Column(Boolean, nullable=False, default=False)
     created_at            = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
@@ -281,10 +279,10 @@ class MeetArtifact(db.Model):
 # ---------------------------------------------------------------------------
 
 class MeetDecision(db.Model):
-    __tablename__ = "meet_decision"
+    __tablename__ = "meet_decisions"
 
-    id                    = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    meeting_id            = Column(UUID(as_uuid=True), ForeignKey("meet_meeting.id", ondelete="CASCADE"), nullable=False, index=True)
+    id                    = Column(Integer, primary_key=True, autoincrement=True)
+    meeting_id            = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
     decision_statement    = Column(Text, nullable=False)
     rationale             = Column(Text, nullable=True)
     owner_ids_json        = Column(JSON, nullable=False, default=list)
@@ -302,17 +300,17 @@ class MeetDecision(db.Model):
 # ---------------------------------------------------------------------------
 
 class MeetActionItem(db.Model):
-    __tablename__ = "meet_action_item"
+    __tablename__ = "meet_action_items"
 
-    id                 = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    meeting_id         = Column(UUID(as_uuid=True), ForeignKey("meet_meeting.id", ondelete="CASCADE"), nullable=False, index=True)
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    meeting_id         = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
     title              = Column(String(255), nullable=False)
     description        = Column(Text, nullable=True)
-    owner_user_id      = Column(UUID(as_uuid=True), nullable=True)
+    owner_user_id      = Column(Integer, nullable=True)
     due_at             = Column(DateTime(timezone=True), nullable=True)
     priority           = Column(String(16), nullable=False, default="medium")   # low / medium / high
-    linked_milestone_id = Column(UUID(as_uuid=True), nullable=True)
-    linked_task_id     = Column(UUID(as_uuid=True), nullable=True)
+    linked_milestone_id = Column(Integer, nullable=True)
+    linked_task_id     = Column(Integer, nullable=True)
     source_timestamp   = Column(String(32), nullable=True)
     status             = Column(Enum(ActionItemStatus), nullable=False, default=ActionItemStatus.OPEN)
     created_at         = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
@@ -325,14 +323,14 @@ class MeetActionItem(db.Model):
 # ---------------------------------------------------------------------------
 
 class MeetAnnotation(db.Model):
-    __tablename__ = "meet_annotation"
+    __tablename__ = "meet_annotations"
 
-    id                 = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    meeting_id         = Column(UUID(as_uuid=True), ForeignKey("meet_meeting.id", ondelete="CASCADE"), nullable=False, index=True)
-    target_artifact_id = Column(UUID(as_uuid=True), nullable=True)
+    id                 = Column(Integer, primary_key=True, autoincrement=True)
+    meeting_id         = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
+    target_artifact_id = Column(Integer, nullable=True)
     annotation_type    = Column(Enum(AnnotationType), nullable=False)
     payload_json       = Column(JSON, nullable=False, default=dict)
-    created_by_user_id = Column(UUID(as_uuid=True), nullable=False)
+    created_by_user_id = Column(Integer, nullable=False)
     created_at         = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
     meeting = relationship("MeetMeeting", back_populates="annotations")
@@ -343,11 +341,11 @@ class MeetAnnotation(db.Model):
 # ---------------------------------------------------------------------------
 
 class MeetAuditLog(db.Model):
-    __tablename__ = "meet_audit_log"
+    __tablename__ = "meet_audit_logs"
 
-    id            = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    actor_user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    meeting_id    = Column(UUID(as_uuid=True), ForeignKey("meet_meeting.id", ondelete="CASCADE"), nullable=False, index=True)
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    actor_user_id = Column(Integer, nullable=False, index=True)
+    meeting_id    = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
     action        = Column(String(64), nullable=False)
     metadata_json = Column(JSON, nullable=False, default=dict)
     created_at    = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)

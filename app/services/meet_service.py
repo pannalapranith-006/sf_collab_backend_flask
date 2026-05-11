@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 from typing import Optional
-from uuid import UUID
 
 from sqlalchemy import and_, or_
 
@@ -27,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Allowed status transitions
+# Allowed status transitions (unchanged)
 # ---------------------------------------------------------------------------
 
 VALID_TRANSITIONS: dict[MeetingStatus, set[MeetingStatus]] = {
@@ -52,7 +51,7 @@ ACTIVE_STATUSES = {
 
 
 # ---------------------------------------------------------------------------
-# Exceptions
+# Exceptions (unchanged)
 # ---------------------------------------------------------------------------
 
 class MeetServiceError(Exception):
@@ -75,7 +74,7 @@ class MeetStateError(MeetServiceError):
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _get_or_404(meeting_id: str) -> MeetMeeting:
+def _get_or_404(meeting_id: int) -> MeetMeeting:
     meeting = db.session.get(MeetMeeting, meeting_id)
     if not meeting:
         raise MeetNotFoundError(f"Meeting '{meeting_id}' not found.")
@@ -91,7 +90,7 @@ def _assert_transition(meeting: MeetMeeting, target: MeetingStatus) -> None:
         )
 
 
-def _audit(actor_user_id: str, meeting: MeetMeeting, action: str, meta: dict | None = None) -> None:
+def _audit(actor_user_id: int, meeting: MeetMeeting, action: str, meta: dict | None = None) -> None:
     log = MeetAuditLog(
         actor_user_id=actor_user_id,
         meeting_id=meeting.id,
@@ -114,10 +113,10 @@ def _emit_event(event_name: str, payload: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def check_schedule_conflict(
-    owner_user_id: str,
+    owner_user_id: int,
     start: datetime,
     end: datetime,
-    exclude_meeting_id: Optional[str] = None,
+    exclude_meeting_id: Optional[int] = None,
 ) -> bool:
     """
     Returns True if the owner already has an active meeting overlapping [start, end).
@@ -129,7 +128,7 @@ def check_schedule_conflict(
         MeetMeeting.scheduled_start_at < end,
         MeetMeeting.scheduled_end_at   > start,
     )
-    if exclude_meeting_id:
+    if exclude_meeting_id is not None:
         query = query.filter(MeetMeeting.id != exclude_meeting_id)
 
     return db.session.query(query.exists()).scalar()
@@ -146,7 +145,7 @@ class MeetService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def create_meeting(actor_user_id: str, data: dict) -> MeetMeeting:
+    def create_meeting(actor_user_id: int, data: dict) -> MeetMeeting:
         """
         Create a new meeting.
         `data` is the cleaned dict from validate_create_meeting_request().
@@ -188,10 +187,11 @@ class MeetService:
         )
 
         db.session.add(meeting)
+        db.session.flush()   # generates meeting.id before audit
         _audit(actor_user_id, meeting, "meeting_created")
         db.session.commit()
 
-        _emit_event("MeetingScheduled", {"meeting_id": str(meeting.id)})
+        _emit_event("MeetingScheduled", {"meeting_id": meeting.id})
         logger.info("Meeting created: %s by user %s", meeting.id, actor_user_id)
         return meeting
 
@@ -200,25 +200,25 @@ class MeetService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def get_meeting(meeting_id: str) -> MeetMeeting:
+    def get_meeting(meeting_id: int) -> MeetMeeting:
         return _get_or_404(meeting_id)
 
     @staticmethod
     def list_meetings(
-        startup_id:      Optional[str] = None,
-        organization_id: Optional[str] = None,
-        owner_user_id:   Optional[str] = None,
+        startup_id:      Optional[int] = None,
+        organization_id: Optional[int] = None,
+        owner_user_id:   Optional[int] = None,
         status:          Optional[str] = None,
         limit:           int = 50,
         offset:          int = 0,
     ) -> list[MeetMeeting]:
         query = db.session.query(MeetMeeting)
 
-        if startup_id:
+        if startup_id is not None:
             query = query.filter(MeetMeeting.startup_id == startup_id)
-        if organization_id:
+        if organization_id is not None:
             query = query.filter(MeetMeeting.organization_id == organization_id)
-        if owner_user_id:
+        if owner_user_id is not None:
             query = query.filter(MeetMeeting.owner_user_id == owner_user_id)
         if status:
             try:
@@ -239,7 +239,7 @@ class MeetService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def update_meeting(actor_user_id: str, meeting_id: str, data: dict) -> MeetMeeting:
+    def update_meeting(actor_user_id: int, meeting_id: int, data: dict) -> MeetMeeting:
         """
         Partial update. `data` is the cleaned dict from validate_update_meeting_request().
         Cancelled/archived meetings cannot be updated.
@@ -254,10 +254,10 @@ class MeetService:
         # If rescheduling, re-check conflicts
         if "scheduled_start_at" in data:
             if check_schedule_conflict(
-                str(meeting.owner_user_id),
+                meeting.owner_user_id,
                 data["scheduled_start_at"],
                 data["scheduled_end_at"],
-                exclude_meeting_id=str(meeting.id),
+                exclude_meeting_id=meeting.id,
             ):
                 raise MeetConflictError(
                     "The updated time slot conflicts with another active meeting."
@@ -270,7 +270,7 @@ class MeetService:
         _audit(actor_user_id, meeting, "meeting_updated", {"fields": list(data.keys())})
         db.session.commit()
 
-        _emit_event("MeetingUpdated", {"meeting_id": str(meeting.id), "fields": list(data.keys())})
+        _emit_event("MeetingUpdated", {"meeting_id": meeting.id, "fields": list(data.keys())})
         return meeting
 
     # ------------------------------------------------------------------ #
@@ -278,7 +278,7 @@ class MeetService:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def cancel_meeting(actor_user_id: str, meeting_id: str, reason: Optional[str] = None) -> MeetMeeting:
+    def cancel_meeting(actor_user_id: int, meeting_id: int, reason: Optional[str] = None) -> MeetMeeting:
         meeting = _get_or_404(meeting_id)
         _assert_transition(meeting, MeetingStatus.CANCELLED)
 
@@ -287,7 +287,7 @@ class MeetService:
         _audit(actor_user_id, meeting, "meeting_cancelled", {"reason": reason})
         db.session.commit()
 
-        _emit_event("MeetingCancelled", {"meeting_id": str(meeting.id), "reason": reason})
+        _emit_event("MeetingCancelled", {"meeting_id": meeting.id, "reason": reason})
         logger.info("Meeting cancelled: %s by user %s", meeting.id, actor_user_id)
         return meeting
 
@@ -297,8 +297,8 @@ class MeetService:
 
     @staticmethod
     def transition_status(
-        actor_user_id: str,
-        meeting_id:    str,
+        actor_user_id: int,
+        meeting_id:    int,
         target_status: MeetingStatus,
     ) -> MeetMeeting:
         """Generic status transition with guard checks."""
@@ -323,6 +323,6 @@ class MeetService:
             MeetingStatus.INDEXED: "MeetingIndexed",
         }
         if target_status in event_map:
-            _emit_event(event_map[target_status], {"meeting_id": str(meeting.id)})
+            _emit_event(event_map[target_status], {"meeting_id": meeting.id})
 
         return meeting

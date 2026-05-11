@@ -152,6 +152,22 @@ class Startup(db.Model):
         back_populates='startup',
         lazy='dynamic',
         cascade='all, delete-orphan')
+    
+# Drive files
+    drive_files_list = db.relationship(
+    "DriveFile",
+    back_populates="workspace",
+    foreign_keys="DriveFile.workspace_id",
+    cascade="all, delete-orphan"
+)
+
+# Drive folders
+    drive_folders_list = db.relationship(
+    "DriveFolder",
+    back_populates="workspace",
+    foreign_keys="DriveFolder.workspace_id",
+    cascade="all, delete-orphan"
+)
 
     # ── HELPER FUNCTIONS ──────────────────────────────────────
 

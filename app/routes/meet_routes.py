@@ -9,9 +9,9 @@ Register in blueprints.py:
 """
 
 import logging
-from functools import wraps
 
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.models.meet_meeting import MeetingStatus
 from app.services.meet_service import (
@@ -32,11 +32,18 @@ meet_bp = Blueprint("meet", __name__, url_prefix="/meetings")
 
 
 # ---------------------------------------------------------------------------
-# Error helpers
+# Response helpers
 # ---------------------------------------------------------------------------
 
+def success_response(data=None, status=200):
+    """Wrap data with a 'success' flag."""
+    if data is None:
+        data = {}
+    return jsonify({"success": True, **data}), status
+
+
 def _err(message: str, status: int, **extra):
-    body = {"error": message, **extra}
+    body = {"success": False, "error": message, **extra}
     return jsonify(body), status
 
 
@@ -53,26 +60,11 @@ def _handle_service_error(exc: Exception):
 
 
 # ---------------------------------------------------------------------------
-# Auth helper
-# Swap this out for your actual auth middleware / decorator.
-# ---------------------------------------------------------------------------
-
-def require_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        # Example: auth middleware sets g.current_user_id
-        if not getattr(g, "current_user_id", None):
-            return _err("Authentication required.", 401)
-        return f(*args, **kwargs)
-    return decorated
-
-
-# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
 @meet_bp.route("/create", methods=["POST"])
-@require_auth
+@jwt_required()
 def create_meeting():
     """
     POST /meetings/create
@@ -85,7 +77,7 @@ def create_meeting():
     try:
         clean = validate_create_meeting_request(payload)
         meeting = MeetService.create_meeting(
-            actor_user_id=g.current_user_id,
+            actor_user_id=get_jwt_identity(),
             data=clean,
         )
     except ValueError as exc:
@@ -93,12 +85,12 @@ def create_meeting():
     except Exception as exc:
         return _handle_service_error(exc)
 
-    return jsonify({"meeting": meeting.to_dict()}), 201
+    return success_response({"meeting": meeting.to_dict()}, 201)
 
 
-@meet_bp.route("/update/<meeting_id>", methods=["PATCH"])
-@require_auth
-def update_meeting(meeting_id: str):
+@meet_bp.route("/update/<int:meeting_id>", methods=["PATCH"])
+@jwt_required()
+def update_meeting(meeting_id: int):
     """
     PATCH /meetings/update/<meeting_id>
     Body: partial JSON — only fields you want to update.
@@ -110,7 +102,7 @@ def update_meeting(meeting_id: str):
     try:
         clean = validate_update_meeting_request(payload)
         meeting = MeetService.update_meeting(
-            actor_user_id=g.current_user_id,
+            actor_user_id=get_jwt_identity(),
             meeting_id=meeting_id,
             data=clean,
         )
@@ -119,12 +111,12 @@ def update_meeting(meeting_id: str):
     except Exception as exc:
         return _handle_service_error(exc)
 
-    return jsonify({"meeting": meeting.to_dict()}), 200
+    return success_response({"meeting": meeting.to_dict()})
 
 
-@meet_bp.route("/cancel/<meeting_id>", methods=["POST"])
-@require_auth
-def cancel_meeting(meeting_id: str):
+@meet_bp.route("/cancel/<int:meeting_id>", methods=["POST"])
+@jwt_required()
+def cancel_meeting(meeting_id: int):
     """
     POST /meetings/cancel/<meeting_id>
     Optional body: { "reason": "..." }
@@ -134,30 +126,30 @@ def cancel_meeting(meeting_id: str):
 
     try:
         meeting = MeetService.cancel_meeting(
-            actor_user_id=g.current_user_id,
+            actor_user_id=get_jwt_identity(),
             meeting_id=meeting_id,
             reason=reason,
         )
     except Exception as exc:
         return _handle_service_error(exc)
 
-    return jsonify({"meeting": meeting.to_dict()}), 200
+    return success_response({"meeting": meeting.to_dict()})
 
 
-@meet_bp.route("/<meeting_id>", methods=["GET"])
-@require_auth
-def get_meeting(meeting_id: str):
+@meet_bp.route("/<int:meeting_id>", methods=["GET"])
+@jwt_required()
+def get_meeting(meeting_id: int):
     """GET /meetings/<meeting_id>"""
     try:
         meeting = MeetService.get_meeting(meeting_id)
     except Exception as exc:
         return _handle_service_error(exc)
 
-    return jsonify({"meeting": meeting.to_dict()}), 200
+    return success_response({"meeting": meeting.to_dict()})
 
 
 @meet_bp.route("/", methods=["GET"])
-@require_auth
+@jwt_required()
 def list_meetings():
     """
     GET /meetings/
@@ -181,12 +173,12 @@ def list_meetings():
     except Exception as exc:
         return _handle_service_error(exc)
 
-    return jsonify({"meetings": [m.to_dict() for m in meetings]}), 200
+    return success_response({"meetings": [m.to_dict() for m in meetings]})
 
 
-@meet_bp.route("/<meeting_id>/status", methods=["POST"])
-@require_auth
-def transition_status(meeting_id: str):
+@meet_bp.route("/<int:meeting_id>/status", methods=["POST"])
+@jwt_required()
+def transition_status(meeting_id: int):
     """
     POST /meetings/<meeting_id>/status
     Body: { "status": "<target_status>" }
@@ -205,11 +197,11 @@ def transition_status(meeting_id: str):
 
     try:
         meeting = MeetService.transition_status(
-            actor_user_id=g.current_user_id,
+            actor_user_id=get_jwt_identity(),
             meeting_id=meeting_id,
             target_status=target,
         )
     except Exception as exc:
         return _handle_service_error(exc)
 
-    return jsonify({"meeting": meeting.to_dict()}), 200
+    return success_response({"meeting": meeting.to_dict()})
