@@ -1,3 +1,5 @@
+from app.routes import milestone_file_routes
+
 from .routes import (
     main_routes,
     auth_routes,
@@ -56,6 +58,9 @@ from .routes import (
     pitch_deck_routes,
     wallet_routes,
     store_routes,
+    # ai_news_routes,  # disabled — requires: pip install feedparser
+    matchmaking_routes,
+    collaboration_routes,
     marketplace_routes,
     readiness_routes,
     balance_routes,
@@ -72,6 +77,31 @@ from .routes import (
 from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
 from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
+from .routes.erpDocument_routes import documents_bp
+
+# ── SF Drive Module ───────────────────────────────────────────────────────────
+# FIX: drive route modules (drive_files_routes, drive_file_relation_routes, etc.)
+# import DriveFile from app.models.drive_file at module load time. If they are
+# included in the `from .routes import (...)` tuple above, Python loads them
+# before app/models/__init__.py has finished executing, causing SQLAlchemy to
+# see the DriveFile class / 'drive_files' table registered twice and crash with:
+#   "Table 'drive_files' is already defined for this MetaData instance"
+#
+# Importing them here (after the main .routes tuple) is safe because by this
+# point the models package is already cached by Python's import system.
+from .routes.drive_routes import drive_bp
+
+try:
+    from app.routes import (
+        drive_files_routes,
+        drive_file_relation_routes,
+        drive_meetings_routes,
+        drive_audit_routes,
+    )
+    _drive_routes_available = True
+except ImportError as e:
+    print(f"⚠  SF Drive routes not available: {e}")
+    _drive_routes_available = False
 
 #  SF Drive Module
 from .routes.drive_routes import drive_bp

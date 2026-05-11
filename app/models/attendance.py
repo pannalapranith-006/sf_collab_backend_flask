@@ -1,4 +1,4 @@
-from datetime import datetime, time
+﻿from datetime import datetime, time
 from app.extensions import db
 
 class Attendance(db.Model):
