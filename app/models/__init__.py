@@ -75,12 +75,19 @@ from .attendance import Attendance
 from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
 from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
+from .analytics import AnalyticsSnapshot
 from .erp_activity import UserActivity, ActivityMonitorJobHealth
 #from .analytics import AnalyticsSnapshot
 
 #  SF Drive Module 
 # ... existing imports ...
 from .drive_file import DriveFile, DriveFileVersion
+from .drive_permission import DriveFilePermission, DriveFileRelation
+
+  
+from app.models.drive_file import DriveFile                             
+from app.models.drive_file_relation import DriveFileRelation
+from app.models.drive_audit_log import DriveAuditLog
 from .drive_folder import DriveFolder
 from .drive_permission import DriveFilePermission
 from .drive_file_relation import DriveFileRelation

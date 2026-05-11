@@ -17,6 +17,7 @@ def create_idea():
     """Create a new contribution idea"""
     try:
         user_id = int(get_jwt_identity())
+        data = request.get_json()
         data    = request.get_json()
 
         user = User.query.get(user_id)
@@ -43,6 +44,7 @@ def create_idea():
         db.session.add(idea)
         db.session.commit()
 
+        print(f"[activity] contribution_idea_created | user_id={user_id} | idea={idea.title}")
         # FIX: Activity.log removed — no workspace_id context here
         print(f"[contribution_ideas] contribution_idea_created: user_id={user_id} title={idea.title!r}")
 
@@ -64,13 +66,12 @@ def create_idea():
 def get_ideas():
     """Get all contribution ideas with pagination"""
     try:
-        page     = request.args.get('page', 1, type=int)
+        page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
-        area     = request.args.get('area')
-        impact   = request.args.get('impact')
-
-        user_id    = int(get_jwt_identity())
-        user       = User.query.get(user_id)
+        area = request.args.get('area')
+        impact = request.args.get('impact')
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
         user_roles = UserRole.query.filter_by(user_id=user_id).all()
 
         if not any(role.is_admin for role in user_roles) and not user.is_admin():

@@ -1,353 +1,120 @@
-import enum
 from datetime import datetime
-
-from sqlalchemy import (
-    Boolean, Column, DateTime, Enum, ForeignKey,
-    Integer, String, Text, JSON, Index
-)
-from sqlalchemy.orm import relationship
-
+from sqlalchemy import Enum as SAEnum
 from app.extensions import db
+import enum
 
 
-# ---------------------------------------------------------------------------
-# Enums (unchanged)
-# ---------------------------------------------------------------------------
+# ── Enums ─────────────────────────────────────────────────────────────────────
 
-class MeetingType(str, enum.Enum):
-    STARTUP_TEAM       = "startup_team"
-    VISION_REVIEW      = "vision_review"
-    MILESTONE_REVIEW   = "milestone_review"
-    MENTOR_SESSION     = "mentor_session"
-    CUSTOMER_CALL      = "customer_call"
-    INVESTOR_CALL      = "investor_call"
-    INTERNAL_ORG       = "internal_org"
-    DISPUTE_REVIEW     = "dispute_review"
+class MeetingType(enum.Enum):
+    startup_team       = "startup_team"
+    vision_review      = "vision_review"
+    milestone_review   = "milestone_review"
+    mentor_session     = "mentor_session"
+    customer_call      = "customer_call"
+    investor_call      = "investor_call"
+    internal_org       = "internal_org"
+    dispute_review     = "dispute_review"
 
 
-class MeetingStatus(str, enum.Enum):
-    SCHEDULED   = "scheduled"
-    PREPARING   = "preparing"
-    LIVE        = "live"
-    PAUSED      = "paused"
-    ENDED       = "ended"
-    PROCESSING  = "processing"
-    INDEXED     = "indexed"
-    ARCHIVED    = "archived"
-    CANCELLED   = "cancelled"
+class MeetingStatus(enum.Enum):
+    scheduled  = "scheduled"
+    live       = "live"
+    ended      = "ended"
+    processing = "processing"
+    indexed    = "indexed"
+    archived   = "archived"
+    cancelled  = "cancelled"
 
 
-class VisibilityScope(str, enum.Enum):
-    PRIVATE              = "private"
-    INVITED_ONLY         = "invited_only"
-    STARTUP_MEMBERS      = "startup_members"
-    ORGANIZATION_MEMBERS = "organization_members"
-    MENTOR_VISIBLE       = "mentor_visible"
-    ADVISOR_VISIBLE      = "advisor_visible"
-    FINANCE_ONLY         = "finance_only"
-    LEGAL_ONLY           = "legal_only"
-    EXTERNAL_GUEST       = "external_guest"
+class VisibilityScope(enum.Enum):
+    private             = "private"
+    invited_only        = "invited_only"
+    startup_members     = "startup_members"
+    organization        = "organization"
+    mentor_visible      = "mentor_visible"
+    advisor_visible     = "advisor_visible"
 
 
-class OwnerScopeType(str, enum.Enum):
-    USER         = "user"
-    STARTUP      = "startup"
-    ORGANIZATION = "organization"
-    VISION       = "vision"
-
-
-class ParticipantRole(str, enum.Enum):
-    HOST       = "host"
-    MODERATOR  = "moderator"
-    ATTENDEE   = "attendee"
-    GUEST      = "guest"
-    OBSERVER   = "observer"
-
-
-class AttendanceStatus(str, enum.Enum):
-    INVITED   = "invited"
-    ACCEPTED  = "accepted"
-    DECLINED  = "declined"
-    JOINED    = "joined"
-    NO_SHOW   = "no_show"
-
-
-class ArtifactType(str, enum.Enum):
-    RECORDING        = "recording"
-    TRANSCRIPT       = "transcript"
-    SUMMARY          = "summary"
-    NOTES            = "notes"
-    WHITEBOARD       = "whiteboard"
-    ANNOTATION       = "annotation_export"
-    SCREENSHOT       = "screenshot"
-    DECK_COPY        = "deck_copy"
-    DECISION_EXPORT  = "decision_export"
-    ACTION_EXPORT    = "action_item_export"
-
-
-class ActionItemStatus(str, enum.Enum):
-    OPEN        = "open"
-    IN_PROGRESS = "in_progress"
-    DONE        = "done"
-    CANCELLED   = "cancelled"
-
-
-class DecisionStatus(str, enum.Enum):
-    OPEN      = "open"
-    CONFIRMED = "confirmed"
-    SUPERSEDED = "superseded"
-
-
-class AnnotationType(str, enum.Enum):
-    FREEHAND      = "freehand"
-    HIGHLIGHT     = "highlight"
-    ARROW         = "arrow"
-    BOX           = "box"
-    STICKY_NOTE   = "sticky_note"
-    TEXT_COMMENT  = "text_comment"
-    PIN           = "pin"
-
-
-# ---------------------------------------------------------------------------
-# Core meeting table
-# ---------------------------------------------------------------------------
+# ── Main Meeting Table ─────────────────────────────────────────────────────────
 
 class MeetMeeting(db.Model):
-    __tablename__ = "meet_meetings"
+    __tablename__ = "meet_meeting"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True)
 
-    # Identity
-    title        = Column(String(255), nullable=False)
-    meeting_type = Column(Enum(MeetingType), nullable=False)
+    # Core identity
+    title        = db.Column(db.String(255), nullable=False)
+    meeting_type = db.Column(SAEnum(MeetingType), nullable=False)
+    status       = db.Column(SAEnum(MeetingStatus), default=MeetingStatus.scheduled, nullable=False)
 
-    # Ownership (now integers)
-    owner_user_id    = Column(Integer, nullable=False, index=True)
-    owner_scope_type = Column(Enum(OwnerScopeType), nullable=False)
-    owner_scope_id   = Column(Integer, nullable=False)
+    # Who owns it and what it belongs to
+    owner_user_id   = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    workspace_id    = db.Column(db.Integer, nullable=True)   # link to workspace when you have that table
+    startup_id      = db.Column(db.Integer, db.ForeignKey("startups.id"), nullable=True)
+    organization_id = db.Column(db.Integer, nullable=True)
+    vision_id       = db.Column(db.Integer, nullable=True)
 
-    # Workspace links
-    workspace_id    = Column(Integer, nullable=True, index=True)
-    startup_id      = Column(Integer, nullable=True, index=True)
-    organization_id = Column(Integer, nullable=True, index=True)
-    vision_id       = Column(Integer, nullable=True)
+    # Linked work objects (stored as JSON arrays of IDs)
+    linked_milestone_ids = db.Column(db.JSON, default=list)   # e.g. [1, 4, 7]
+    linked_task_ids      = db.Column(db.JSON, default=list)
 
-    # Linked entity ID arrays stored as JSON
-    linked_milestone_ids   = Column(JSON, nullable=False, default=list)
-    linked_task_ids        = Column(JSON, nullable=False, default=list)
-    linked_crm_entity_ids  = Column(JSON, nullable=False, default=list)
+    # Scheduling
+    scheduled_start_at = db.Column(db.DateTime, nullable=False)
+    scheduled_end_at   = db.Column(db.DateTime, nullable=True)
+    actual_start_at    = db.Column(db.DateTime, nullable=True)   # set when meeting goes live
+    actual_end_at      = db.Column(db.DateTime, nullable=True)   # set when meeting ends
+    timezone           = db.Column(db.String(50), default="UTC")
 
-    # Schedule
-    scheduled_start_at = Column(DateTime(timezone=True), nullable=False)
-    scheduled_end_at   = Column(DateTime(timezone=True), nullable=False)
-    actual_start_at    = Column(DateTime(timezone=True), nullable=True)
-    actual_end_at      = Column(DateTime(timezone=True), nullable=True)
-    timezone           = Column(String(64), nullable=False, default="UTC")
+    # Permissions & features
+    visibility_scope      = db.Column(SAEnum(VisibilityScope), default=VisibilityScope.invited_only)
+    recording_enabled     = db.Column(db.Boolean, default=False)
+    transcription_enabled = db.Column(db.Boolean, default=False)
+    live_notes_enabled    = db.Column(db.Boolean, default=True)
+    annotation_enabled    = db.Column(db.Boolean, default=False)
 
-    # State
-    status           = Column(Enum(MeetingStatus), nullable=False, default=MeetingStatus.SCHEDULED)
-    visibility_scope = Column(Enum(VisibilityScope), nullable=False, default=VisibilityScope.INVITED_ONLY)
+    # Output doc / file IDs (populated after the meeting ends)
+    agenda_doc_id      = db.Column(db.String(255), nullable=True)
+    live_notes_doc_id  = db.Column(db.String(255), nullable=True)
+    summary_doc_id     = db.Column(db.String(255), nullable=True)
+    transcript_file_id = db.Column(db.String(255), nullable=True)
+    recording_file_id  = db.Column(db.String(255), nullable=True)
 
-    # Feature flags
-    recording_enabled     = Column(Boolean, nullable=False, default=False)
-    transcription_enabled = Column(Boolean, nullable=False, default=False)
-    live_notes_enabled    = Column(Boolean, nullable=False, default=True)
-    annotation_enabled    = Column(Boolean, nullable=False, default=False)
-    waiting_room_enabled  = Column(Boolean, nullable=False, default=False)
+    # Metadata
+    metadata_json = db.Column(db.JSON, default=dict)  # any extra data you want to attach
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at    = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Optional linked docs / files (IDs as integers)
-    agenda_doc_id      = Column(Integer, nullable=True)
-    live_notes_doc_id  = Column(Integer, nullable=True)
-    summary_doc_id     = Column(Integer, nullable=True)
-    transcript_file_id = Column(Integer, nullable=True)
-    recording_file_id  = Column(Integer, nullable=True)
-    whiteboard_file_id = Column(Integer, nullable=True)
-    followup_meeting_id = Column(Integer, nullable=True)
+    # ── Relationships ──────────────────────────────────────────────────────────
+    owner        = db.relationship("User", foreign_keys=[owner_user_id], backref="meetings_owned")
+    participants = db.relationship("MeetParticipant", back_populates="meeting", cascade="all, delete-orphan")
+    artifacts    = db.relationship("MeetArtifact",    back_populates="meeting", cascade="all, delete-orphan")
 
-    # Guest policy
-    external_guest_policy = Column(String(64), nullable=True)
-
-    # Extensible metadata
-    metadata_json = Column(JSON, nullable=False, default=dict)
-
-    # Timestamps
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    # Relationships
-    participants = relationship("MeetParticipant", back_populates="meeting", cascade="all, delete-orphan")
-    artifacts    = relationship("MeetArtifact",    back_populates="meeting", cascade="all, delete-orphan")
-    decisions    = relationship("MeetDecision",    back_populates="meeting", cascade="all, delete-orphan")
-    action_items = relationship("MeetActionItem",  back_populates="meeting", cascade="all, delete-orphan")
-    annotations  = relationship("MeetAnnotation",  back_populates="meeting", cascade="all, delete-orphan")
-    audit_logs   = relationship("MeetAuditLog",    back_populates="meeting", cascade="all, delete-orphan")
-
-    __table_args__ = (
-        Index("ix_meet_meetings_startup_status", "startup_id", "status"),
-        Index("ix_meet_meetings_owner_scope",    "owner_scope_type", "owner_scope_id"),
-        Index("ix_meet_meetings_scheduled",      "scheduled_start_at"),
-    )
-
-    def __repr__(self):
-        return f"<MeetMeeting id={self.id} title={self.title!r} status={self.status}>"
+    # ── Helper methods ─────────────────────────────────────────────────────────
 
     def to_dict(self):
         return {
             "id":                    self.id,
             "title":                 self.title,
             "meeting_type":          self.meeting_type.value,
-            "owner_user_id":         self.owner_user_id,
-            "owner_scope_type":      self.owner_scope_type.value,
-            "owner_scope_id":        self.owner_scope_id,
-            "workspace_id":          self.workspace_id,
-            "startup_id":            self.startup_id,
-            "organization_id":       self.organization_id,
-            "vision_id":             self.vision_id,
-            "linked_milestone_ids":  self.linked_milestone_ids,
-            "linked_task_ids":       self.linked_task_ids,
-            "linked_crm_entity_ids": self.linked_crm_entity_ids,
-            "scheduled_start_at":    self.scheduled_start_at.isoformat() if self.scheduled_start_at else None,
-            "scheduled_end_at":      self.scheduled_end_at.isoformat() if self.scheduled_end_at else None,
-            "actual_start_at":       self.actual_start_at.isoformat() if self.actual_start_at else None,
-            "actual_end_at":         self.actual_end_at.isoformat() if self.actual_end_at else None,
-            "timezone":              self.timezone,
             "status":                self.status.value,
+            "owner_user_id":         self.owner_user_id,
+            "startup_id":            self.startup_id,
+            "vision_id":             self.vision_id,
+            "linked_milestone_ids":  self.linked_milestone_ids or [],
+            "linked_task_ids":       self.linked_task_ids or [],
+            "scheduled_start_at":    self.scheduled_start_at.isoformat() if self.scheduled_start_at else None,
+            "scheduled_end_at":      self.scheduled_end_at.isoformat()   if self.scheduled_end_at   else None,
+            "actual_start_at":       self.actual_start_at.isoformat()    if self.actual_start_at    else None,
+            "actual_end_at":         self.actual_end_at.isoformat()      if self.actual_end_at      else None,
+            "timezone":              self.timezone,
             "visibility_scope":      self.visibility_scope.value,
             "recording_enabled":     self.recording_enabled,
             "transcription_enabled": self.transcription_enabled,
             "live_notes_enabled":    self.live_notes_enabled,
             "annotation_enabled":    self.annotation_enabled,
-            "waiting_room_enabled":  self.waiting_room_enabled,
-            "agenda_doc_id":         self.agenda_doc_id,
-            "live_notes_doc_id":     self.live_notes_doc_id,
             "summary_doc_id":        self.summary_doc_id,
             "transcript_file_id":    self.transcript_file_id,
             "recording_file_id":     self.recording_file_id,
-            "whiteboard_file_id":    self.whiteboard_file_id,
-            "followup_meeting_id":   self.followup_meeting_id,
-            "external_guest_policy": self.external_guest_policy,
-            "metadata_json":         self.metadata_json,
             "created_at":            self.created_at.isoformat(),
-            "updated_at":            self.updated_at.isoformat(),
         }
-
-
-# ---------------------------------------------------------------------------
-# Participants
-# ---------------------------------------------------------------------------
-
-class MeetParticipant(db.Model):
-    __tablename__ = "meet_participants"
-
-    id                = Column(Integer, primary_key=True, autoincrement=True)
-    meeting_id        = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id           = Column(Integer, nullable=True, index=True)  # null for external guests
-    guest_email       = Column(String(255), nullable=True)
-    role_in_meeting   = Column(Enum(ParticipantRole), nullable=False, default=ParticipantRole.ATTENDEE)
-    attendance_status = Column(Enum(AttendanceStatus), nullable=False, default=AttendanceStatus.INVITED)
-    joined_at         = Column(DateTime(timezone=True), nullable=True)
-    left_at           = Column(DateTime(timezone=True), nullable=True)
-    invited_by_user_id = Column(Integer, nullable=True)
-
-    meeting = relationship("MeetMeeting", back_populates="participants")
-
-    def __repr__(self):
-        return f"<MeetParticipant meeting={self.meeting_id} user={self.user_id or self.guest_email}>"
-
-
-# ---------------------------------------------------------------------------
-# Artifacts
-# ---------------------------------------------------------------------------
-
-class MeetArtifact(db.Model):
-    __tablename__ = "meet_artifacts"
-
-    id                    = Column(Integer, primary_key=True, autoincrement=True)
-    meeting_id            = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
-    artifact_type         = Column(Enum(ArtifactType), nullable=False)
-    drive_file_id         = Column(Integer, nullable=True)
-    source_timestamp_range = Column(JSON, nullable=True)   # {"start": seconds, "end": seconds}
-    created_by_user_id    = Column(Integer, nullable=True)
-    ai_generated          = Column(Boolean, nullable=False, default=False)
-    created_at            = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-
-    meeting = relationship("MeetMeeting", back_populates="artifacts")
-
-
-# ---------------------------------------------------------------------------
-# Decisions
-# ---------------------------------------------------------------------------
-
-class MeetDecision(db.Model):
-    __tablename__ = "meet_decisions"
-
-    id                    = Column(Integer, primary_key=True, autoincrement=True)
-    meeting_id            = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
-    decision_statement    = Column(Text, nullable=False)
-    rationale             = Column(Text, nullable=True)
-    owner_ids_json        = Column(JSON, nullable=False, default=list)
-    linked_milestone_ids_json = Column(JSON, nullable=False, default=list)
-    linked_doc_ids_json   = Column(JSON, nullable=False, default=list)
-    source_timestamp      = Column(String(32), nullable=True)   # e.g. "00:14:32"
-    status                = Column(Enum(DecisionStatus), nullable=False, default=DecisionStatus.OPEN)
-    created_at            = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-
-    meeting = relationship("MeetMeeting", back_populates="decisions")
-
-
-# ---------------------------------------------------------------------------
-# Action items
-# ---------------------------------------------------------------------------
-
-class MeetActionItem(db.Model):
-    __tablename__ = "meet_action_items"
-
-    id                 = Column(Integer, primary_key=True, autoincrement=True)
-    meeting_id         = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
-    title              = Column(String(255), nullable=False)
-    description        = Column(Text, nullable=True)
-    owner_user_id      = Column(Integer, nullable=True)
-    due_at             = Column(DateTime(timezone=True), nullable=True)
-    priority           = Column(String(16), nullable=False, default="medium")   # low / medium / high
-    linked_milestone_id = Column(Integer, nullable=True)
-    linked_task_id     = Column(Integer, nullable=True)
-    source_timestamp   = Column(String(32), nullable=True)
-    status             = Column(Enum(ActionItemStatus), nullable=False, default=ActionItemStatus.OPEN)
-    created_at         = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-
-    meeting = relationship("MeetMeeting", back_populates="action_items")
-
-
-# ---------------------------------------------------------------------------
-# Annotations
-# ---------------------------------------------------------------------------
-
-class MeetAnnotation(db.Model):
-    __tablename__ = "meet_annotations"
-
-    id                 = Column(Integer, primary_key=True, autoincrement=True)
-    meeting_id         = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
-    target_artifact_id = Column(Integer, nullable=True)
-    annotation_type    = Column(Enum(AnnotationType), nullable=False)
-    payload_json       = Column(JSON, nullable=False, default=dict)
-    created_by_user_id = Column(Integer, nullable=False)
-    created_at         = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-
-    meeting = relationship("MeetMeeting", back_populates="annotations")
-
-
-# ---------------------------------------------------------------------------
-# Audit log
-# ---------------------------------------------------------------------------
-
-class MeetAuditLog(db.Model):
-    __tablename__ = "meet_audit_logs"
-
-    id            = Column(Integer, primary_key=True, autoincrement=True)
-    actor_user_id = Column(Integer, nullable=False, index=True)
-    meeting_id    = Column(Integer, ForeignKey("meet_meetings.id", ondelete="CASCADE"), nullable=False, index=True)
-    action        = Column(String(64), nullable=False)
-    metadata_json = Column(JSON, nullable=False, default=dict)
-    created_at    = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-
-    meeting = relationship("MeetMeeting", back_populates="audit_logs")

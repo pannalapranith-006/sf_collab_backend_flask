@@ -139,7 +139,7 @@ def _run_startup_migrations(app):
 
 
 def create_app(config_name=None):
-    """Create and configure Flask application"""
+    """Create and configure Flask application."""
 
     app = Flask(__name__, instance_relative_config=True)
     #app.register_blueprint(analytics_bp)
@@ -167,6 +167,7 @@ def create_app(config_name=None):
     # Support Bearer tokens for local dev onboarding flows while preserving
     # cookie support for deployed environments.
     is_production = os.getenv("FLASK_ENV") == "production"
+
     if is_production:
         app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
         app.config["JWT_COOKIE_SECURE"] = True
@@ -254,6 +255,7 @@ def create_app(config_name=None):
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
     )
 
+    # ── After-request: CORS + request logging (single handler) ───────────────
     @app.after_request
     def handle_cors(response):
 
@@ -318,6 +320,25 @@ def create_app(config_name=None):
             response_preview = "<non-json response>"
 
         print(f"""
+
+        return response
+
+    @app.before_request
+    def start_request_timer():
+        g.start_time = time.time()
+
+    @app.route('/<path:path>', methods=['OPTIONS'])
+    def options_handler(path):
+        return '', 200
+
+    # ── Extensions ────────────────────────────────────────────────────────────
+{method} {path}
+Status: {status}  Duration: {duration}s
+Client IP: {ip}  Origin: {origin}
+Auth Header: {has_auth}  Cookie: {has_cookie}  Size: {content_length}b
+Response: {response_preview}
+""")
+        return response
     ================= API REQUEST =================
     {method} {path}
     Status: {status}
@@ -349,13 +370,13 @@ def create_app(config_name=None):
         app.config["SESSION_FILE_DIR"] = os.path.join(BASE_DIR, "flask_session")
         os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
 
-    sess = Session()
     if app.config.get("SESSION_TYPE") == "sqlalchemy":
         app.config["SESSION_SQLALCHEMY"] = db
         app.config["SESSION_SQLALCHEMY_TABLE"] = "sessions"
 
+    _sess = Session()
     try:
-        sess.init_app(app)
+        _sess.init_app(app)
     except Exception as e:
         if "already exists" in str(e):
             print(f"⚠ Sessions table race (harmless): {type(e).__name__}: {e}")
@@ -375,8 +396,10 @@ def create_app(config_name=None):
     _run_startup_migrations(app)
     # ─────────────────────────────────────────────────────────────────────────
 
+    # ── Socket.IO ─────────────────────────────────────────────────────────────
     socketio.init_app(app)
 
+    # ── OAuth ─────────────────────────────────────────────────────────────────
     if app.config.get("GOOGLE_CLIENT_ID") and app.config.get("GOOGLE_CLIENT_SECRET"):
         auth_routes.init_oauth(app)
         print("✓ OAuth initialized")
@@ -415,15 +438,17 @@ def create_app(config_name=None):
 
     @app.errorhandler(500)
     def internal_error(error):
+        import traceback
         db.session.rollback()
         print("🔥 500 ERROR:", error)
         traceback.print_exc()
-        return {'success': False, 'error': str(error)}, 500
+        return {"success": False, "error": str(error)}, 500
 
+    # ── GitHub webhook ────────────────────────────────────────────────────────
     @app.route('/api/webhook/github', methods=['POST'])
     def github_webhook():
         signature = request.headers.get('X-Hub-Signature-256')
-        if signature is None:
+        if not signature:
             abort(400, "No signature provided")
     
         sha_name, signature = signature.split('=')

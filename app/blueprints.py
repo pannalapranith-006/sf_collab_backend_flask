@@ -66,12 +66,22 @@ from .routes import (
     drive_file_relation_routes,
     drive_meetings_routes,
     drive_audit_routes,
+    activation_routes,
+    mentorship_routes,
+    meet_file_routes,
+    meet_recording_routes,
+    meet_guest_routes,
+    meet_milestone_routes,
+    meet_workspace_memory,
 )
 
 # ── ERP Module ────────────────────────────────────────────────────────────────
 from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
 from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
+
+# ── SF Meet ───────────────────────────────────────────────────────────────────
+from .routes.meet_routes import meet_bp
 
 #  SF Drive Module
 from .routes.drive_routes import drive_bp

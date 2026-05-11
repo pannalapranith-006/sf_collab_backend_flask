@@ -8,6 +8,7 @@ Key changes from original:
 - last_seen is stamped in UTC only on disconnect — never on activity.
 - Away detection uses IDLE_THRESHOLD_SECS = 300 (5 minutes), matching the frontend.
 - Background thread checks every 30 s and emits presence_update for idle users.
+- SF Meet real-time collaboration events appended at the bottom.
 """
 
 from flask_socketio import emit, join_room, leave_room
@@ -20,29 +21,27 @@ import logging
 
 print("✅ socket_events.py loaded")
 
+# ── SF Meet room state ────────────────────────────────────────────────────────
+_meeting_rooms  = {}   # { mid_str: { uid_str: {sid,name,avatar,joined_at,cursor} } }
+_sid_to_meeting = {}   # { sid: (mid_str, uid_str) }
+
+def _meet_room(mid):  return f"meeting_{mid}"
+def _meet_participants(mid):
+    return [
+        {"user_id": uid, "name": p["name"], "avatar": p["avatar"],
+         "joined_at": p["joined_at"], "cursor": p.get("cursor")}
+        for uid, p in _meeting_rooms.get(str(mid), {}).items()
+    ]
+
 # ─── Presence Manager ─────────────────────────────────────────────────────────
 
 class PresenceManager:
-    """
-    Single source of truth for all connected-user presence data.
-
-    Internal structure per user_id (string):
-        {
-            "sids":        set of active socket session IDs,
-            "last_active": datetime (UTC),
-            "last_seen":   datetime (UTC) | None,
-            "status":      "online" | "idle" | "offline",
-        }
-    """
-
-    IDLE_THRESHOLD_SECS = 300   # 5 minutes — must match IDLE_THRESHOLD_MS on frontend
-    CHECK_INTERVAL_SECS = 30    # background thread cadence
+    IDLE_THRESHOLD_SECS = 300
+    CHECK_INTERVAL_SECS = 30
 
     def __init__(self):
         self._lock  = threading.Lock()
-        self._users = {}        # { user_id: { sids, last_active, last_seen, status } }
-
-    # ── Internal helpers ──────────────────────────────────────────────────────
+        self._users = {}
 
     def _get_or_create(self, user_id):
         uid = str(user_id)
@@ -56,21 +55,17 @@ class PresenceManager:
         return self._users[uid]
 
     def _broadcast_presence(self, user_id, status, last_seen_iso=None):
-        """Emit the unified presence_update event to all connected clients."""
         socketio.emit("presence_update", {
             "user_id":   str(user_id),
             "status":    status,
             "last_seen": last_seen_iso,
         })
-        # Also emit legacy user_status so older frontend code still works
         socketio.emit("user_status", {
             "user_id":   str(user_id),
             "status":    status,
             "last_seen": last_seen_iso,
             "timestamp": last_seen_iso or datetime.utcnow().isoformat(),
         })
-
-    # ── Public API ────────────────────────────────────────────────────────────
 
     def connect(self, user_id, sid):
         uid = str(user_id)
@@ -93,13 +88,10 @@ class PresenceManager:
                 return
             entry["sids"].discard(sid)
             if not entry["sids"]:
-                # Last session closed — user is truly offline
                 entry["last_seen"] = now
                 entry["status"]    = "offline"
                 broadcast_offline  = True
-
         if broadcast_offline:
-            # Persist last_seen in DB
             try:
                 from app.models.user import User
                 user = User.query.get(int(uid))
@@ -112,24 +104,17 @@ class PresenceManager:
             logging.info(f"[Presence] User {uid} OFFLINE")
 
     def record_activity(self, user_id):
-        """Call when a user sends a message, heartbeat, or any interaction."""
         uid = str(user_id)
         now = datetime.utcnow()
         was_idle = False
         with self._lock:
             entry = self._users.get(uid)
             if not entry or not entry["sids"]:
-                return   # user not connected, ignore
-            was_idle           = entry["status"] == "idle"
+                return
+            was_idle             = entry["status"] == "idle"
             entry["last_active"] = now
             entry["status"]      = "online"
-
-        # Broadcast activity timestamp to all clients so they update idle timers
-        socketio.emit("user_activity", {
-            "user_id": uid,
-            "ts":      now.isoformat(),
-        })
-        # If recovering from idle — send an explicit online event
+        socketio.emit("user_activity", {"user_id": uid, "ts": now.isoformat()})
         if was_idle:
             self._broadcast_presence(uid, "online", now.isoformat())
             logging.info(f"[Presence] User {uid} recovered from IDLE")
@@ -144,14 +129,11 @@ class PresenceManager:
             return bool(entry and entry["sids"])
 
     def get_sid_user(self, sid):
-        """Reverse-lookup: which user_id owns this sid?"""
         with self._lock:
             for uid, entry in self._users.items():
                 if sid in entry["sids"]:
                     return uid
         return None
-
-    # ── Background idle checker ───────────────────────────────────────────────
 
     def _idle_check_loop(self):
         import time
@@ -161,17 +143,12 @@ class PresenceManager:
                 now = datetime.utcnow()
                 with self._lock:
                     snapshot = list(self._users.items())
-
                 for uid, entry in snapshot:
-                    if not entry["sids"]:
-                        continue   # already offline
-                    if entry["status"] == "idle":
-                        continue   # already marked idle
-
+                    if not entry["sids"] or entry["status"] == "idle":
+                        continue
                     gap = (now - entry["last_active"]).total_seconds()
                     if gap >= self.IDLE_THRESHOLD_SECS:
                         with self._lock:
-                            # Re-check under lock to avoid race
                             e2 = self._users.get(uid)
                             if not e2 or not e2["sids"]:
                                 continue
@@ -186,12 +163,9 @@ class PresenceManager:
         t.start()
 
 
-# Module-level singleton
 presence = PresenceManager()
 presence.start_background_thread()
 
-# ─── Session registry (sid → user_id) ─────────────────────────────────────────
-# Kept separate so socket handlers can look up user_id from request.sid quickly.
 socket_sessions = {}   # { sid: user_id_str }
 
 
@@ -214,19 +188,14 @@ def handle_connect(auth):
     if not token:
         logging.warning("[Socket] connect rejected — no token")
         return False
-
     user_id = _user_id_from_token(token)
     if not user_id:
         logging.warning("[Socket] connect rejected — bad token")
         return False
-
     sid = request.sid
     socket_sessions[sid] = user_id
-
     join_room(f"user_{user_id}")
     presence.connect(user_id, sid)
-
-    # Send full online-user snapshot to the newly connected client
     emit("online_users", {"user_ids": presence.get_online_user_ids()})
     logging.info(f"[Socket] User {user_id} connected (sid={sid})")
 
@@ -235,40 +204,52 @@ def handle_connect(auth):
 def handle_disconnect(reason=None):
     sid     = request.sid
     user_id = socket_sessions.pop(sid, None)
-    if not user_id:
-        return
-    presence.disconnect(user_id, sid)
-    logging.info(f"[Socket] User {user_id} disconnected (sid={sid}, reason={reason})")
+    if user_id:
+        presence.disconnect(user_id, sid)
+        logging.info(f"[Socket] User {user_id} disconnected (sid={sid}, reason={reason})")
+
+    # ── SF Meet cleanup ───────────────────────────────────────────────────────
+    if sid in _sid_to_meeting:
+        meeting_id, meet_user_id = _sid_to_meeting.pop(sid)
+        room_data   = _meeting_rooms.get(meeting_id, {})
+        participant = room_data.pop(meet_user_id, None)
+        if not room_data:
+            _meeting_rooms.pop(meeting_id, None)
+        if participant:
+            leave_room(_meet_room(meeting_id))
+            socketio.emit("meet_participant_left", {
+                "meeting_id": meeting_id,
+                "user_id":    meet_user_id,
+                "name":       participant["name"],
+                "reason":     "disconnected",
+                "left_at":    datetime.utcnow().isoformat(),
+            }, room=_meet_room(meeting_id))
+            try:
+                from app.models.meet_participant import MeetParticipant
+                p = MeetParticipant.query.filter_by(
+                    meeting_id=int(meeting_id), user_id=int(meet_user_id)).first()
+                if p:
+                    p.left_at = datetime.utcnow()
+                    db.session.commit()
+            except Exception as e:
+                logging.warning(f"[MeetSocket] left_at update failed: {e}")
 
 
 # ─── Heartbeat ────────────────────────────────────────────────────────────────
 
 @socketio.on("heartbeat")
 def handle_heartbeat(data):
-    """Client sends this every 30 s to stay alive and reset idle timer."""
-    sid     = request.sid
-    user_id = socket_sessions.get(sid)
-    if not user_id:
-        return
-    presence.record_activity(user_id)
+    user_id = socket_sessions.get(request.sid)
+    if user_id:
+        presence.record_activity(user_id)
 
-
-# ─── User activity (messages, typing, etc.) ───────────────────────────────────
 
 @socketio.on("user_activity")
 def handle_user_activity(data):
-    """
-    Explicit activity ping — sent by client on message send / typing.
-    Resets the idle clock and broadcasts the fresh timestamp.
-    """
-    sid     = request.sid
-    user_id = socket_sessions.get(sid)
-    if not user_id:
-        return
-    presence.record_activity(user_id)
+    user_id = socket_sessions.get(request.sid)
+    if user_id:
+        presence.record_activity(user_id)
 
-
-# ─── Online-user snapshot ─────────────────────────────────────────────────────
 
 @socketio.on("get_online_users")
 def handle_get_online_users():
@@ -279,33 +260,29 @@ def handle_get_online_users():
 
 @socketio.on("join_conversation")
 def handle_join_conversation(data):
-    sid     = request.sid
-    user_id = socket_sessions.get(sid)
+    user_id = socket_sessions.get(request.sid)
     if not user_id:
         return
     conversation_id = data.get("conversation_id")
     room = f"conversation_{conversation_id}"
     join_room(room)
     emit("user_joined_conversation", {
-        "user_id":         user_id,
-        "conversation_id": conversation_id,
-        "timestamp":       datetime.utcnow().isoformat(),
+        "user_id": user_id, "conversation_id": conversation_id,
+        "timestamp": datetime.utcnow().isoformat(),
     }, room=room, include_self=False)
 
 
 @socketio.on("leave_conversation")
 def handle_leave_conversation(data):
-    sid     = request.sid
-    user_id = socket_sessions.get(sid)
+    user_id = socket_sessions.get(request.sid)
     if not user_id:
         return
     conversation_id = data.get("conversation_id")
     room = f"conversation_{conversation_id}"
     leave_room(room)
     emit("user_left_conversation", {
-        "user_id":         user_id,
-        "conversation_id": conversation_id,
-        "timestamp":       datetime.utcnow().isoformat(),
+        "user_id": user_id, "conversation_id": conversation_id,
+        "timestamp": datetime.utcnow().isoformat(),
     }, room=room, include_self=False)
 
 
@@ -370,7 +347,6 @@ def handle_send_message(data):
     try:
         user         = User.query.get(int(user_id))
         conversation = ChatConversation.query.get(conversation_id)
-
         if not user or not conversation:
             emit("error", {"message": "User or conversation not found"})
             return
@@ -379,16 +355,16 @@ def handle_send_message(data):
             return
 
         message = ChatMessage(
-            conversation_id=conversation_id,
-            sender_id=int(user_id),
-            original_content=content,
-            message_type=message_type,
-            reply_to_id=reply_to_id,
-            file_url=file_url,
-            file_name=file_name,
-            file_type=file_type,
-            metadata_data={"is_image": derived_image} if (has_file or message_type in ("image", "file")) else {},
-            sender_timezone=user.get_timezone() if hasattr(user, "get_timezone") else "UTC",
+            conversation_id  = conversation_id,
+            sender_id        = int(user_id),
+            original_content = content,
+            message_type     = message_type,
+            reply_to_id      = reply_to_id,
+            file_url         = file_url,
+            file_name        = file_name,
+            file_type        = file_type,
+            metadata_data    = {"is_image": derived_image} if (has_file or message_type in ("image", "file")) else {},
+            sender_timezone  = user.get_timezone() if hasattr(user, "get_timezone") else "UTC",
         )
         db.session.add(message)
         conversation.updated_at = datetime.utcnow()
@@ -446,7 +422,6 @@ def handle_send_message(data):
                 'profilePicture': user.profile_picture
             }
 
-        # Un-hide conversation for other participants who hid it
         for participant in conversation.participants:
             if str(participant.id) != str(user_id):
                 if conversation.is_hidden_for_user(participant.id):
@@ -454,20 +429,16 @@ def handle_send_message(data):
 
         message_data = message.to_dict(for_user=user)
         message_data["sender"] = {
-            "id":             user.id,
-            "firstName":      user.first_name,
-            "lastName":       user.last_name,
-            "profilePicture": user.profile_picture,
+            "id": user.id, "firstName": user.first_name,
+            "lastName": user.last_name, "profilePicture": user.profile_picture,
         }
 
-        room = f"conversation_{conversation_id}"
         emit("new_message", {
-            "message":         message_data,
-            "conversation_id": conversation_id,
+            "message": message_data, "conversation_id": conversation_id,
             "conversation": {
-                "id":                conversation_id,
+                "id": conversation_id,
                 "conversation_type": conversation.conversation_type,
-                "name":              conversation.name,
+                "name": conversation.name,
             },
         }, room=room)
         
@@ -487,7 +458,6 @@ def handle_send_message(data):
                 'conversation': conversation_meta,
             }, room=f"user_{participant.id}")
 
-        # Record activity so idle clock resets for the sender
         presence.record_activity(user_id)
 
     except Exception as e:
@@ -507,7 +477,6 @@ def handle_mark_as_read(data):
     user_id = socket_sessions.get(sid)
     if not user_id:
         return
-
     conversation_id = data.get("conversation_id")
     if not conversation_id:
         return
@@ -523,9 +492,7 @@ def handle_mark_as_read(data):
             .filter(ChatMessage.sender_id != int(user_id))
             .all()
         )
-
         conversation.mark_as_read(int(user_id))
-
         try:
             remaining = conversation.get_unread_message_count(int(user_id))
         except Exception:
@@ -538,24 +505,17 @@ def handle_mark_as_read(data):
         }, room=f"user_{user_id}")
 
         now_iso = datetime.utcnow().isoformat()
-        room    = f"conversation_{conversation_id}"
         emit("messages_read", {
-            "user_id":         user_id,
-            "conversation_id": conversation_id,
-            "timestamp":       now_iso,
-        }, room=room)
+            "user_id": user_id, "conversation_id": conversation_id,
+            "timestamp": now_iso,
+        }, room=f"conversation_{conversation_id}")
 
-        notified = set()
         for msg in unread_messages:
             sender_id = str(msg.sender_id)
             socketio.emit("message_status_update", {
-                "message_id":      msg.id,
-                "conversation_id": conversation_id,
-                "status":          "read",
-                "read_at":         now_iso,
-                "read_by":         user_id,
+                "message_id": msg.id, "conversation_id": conversation_id,
+                "status": "read", "read_at": now_iso, "read_by": user_id,
             }, room=f"user_{sender_id}")
-            notified.add(sender_id)
 
     except Exception as e:
         logging.error(f"[Socket] mark_as_read error: {e}", exc_info=True)
@@ -565,39 +525,303 @@ def handle_mark_as_read(data):
 
 @socketio.on("join_notifications")
 def handle_join_notifications(data):
-    sid     = request.sid
-    user_id = socket_sessions.get(sid)
+    user_id = socket_sessions.get(request.sid)
     if not user_id:
         return
     requested = str((data or {}).get("user_id", ""))
     if requested and requested != str(user_id):
-        logging.warning(f"[Socket] User {user_id} tried to join notifications room for {requested}")
+        logging.warning(f"[Socket] User {user_id} tried to join notifications for {requested}")
         return
     join_room(f"user_{user_id}")
     emit("notifications_room_joined", {"user_id": user_id})
 
 
-# ─── Helper functions (called from Flask routes) ───────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+# SF MEET — REAL-TIME COLLABORATION
+# ══════════════════════════════════════════════════════════════════════════════
+
+@socketio.on("meet_join")
+def handle_meet_join(data):
+    """
+    Client: { token, meeting_id }
+    Validates JWT + participant status, joins socket room,
+    broadcasts meet_participant_joined, sends meet_participant_list to joiner.
+    """
+    sid        = request.sid
+    token      = (data or {}).get("token")
+    meeting_id = str((data or {}).get("meeting_id", ""))
+
+    if not token or not meeting_id:
+        emit("meet_error", {"message": "token and meeting_id required"})
+        return
+
+    user_id = _user_id_from_token(token)
+    if not user_id:
+        emit("meet_error", {"message": "Invalid token"})
+        return
+
+    # Resolve name + avatar
+    try:
+        from app.models.user import User
+        u = User.query.get(int(user_id))
+        name   = f"{u.first_name} {u.last_name}".strip() if u else "Unknown"
+        avatar = getattr(u, "profile_picture", None) if u else None
+    except Exception:
+        name, avatar = "Unknown", None
+
+    # Verify participant
+    try:
+        from app.models.meet_meeting import MeetMeeting
+        from app.models.meet_participant import MeetParticipant
+        meeting = MeetMeeting.query.get(int(meeting_id))
+        if not meeting:
+            emit("meet_error", {"message": "Meeting not found"})
+            return
+        authorized = (
+            str(meeting.owner_user_id) == user_id or
+            MeetParticipant.query.filter_by(
+                meeting_id=int(meeting_id), user_id=int(user_id)).first()
+        )
+        if not authorized:
+            emit("meet_error", {"message": "Not a participant"})
+            return
+    except Exception as e:
+        logging.error(f"[MeetSocket] join DB error: {e}")
+        emit("meet_error", {"message": "Server error"})
+        return
+
+    joined_at = datetime.utcnow().isoformat()
+    _meeting_rooms.setdefault(meeting_id, {})[user_id] = {
+        "sid": sid, "name": name, "avatar": avatar,
+        "joined_at": joined_at, "cursor": None,
+    }
+    _sid_to_meeting[sid] = (meeting_id, user_id)
+    join_room(_meet_room(meeting_id))
+
+    # Notify others
+    emit("meet_participant_joined", {
+        "meeting_id": meeting_id, "user_id": user_id,
+        "name": name, "avatar": avatar, "joined_at": joined_at,
+    }, room=_meet_room(meeting_id), include_self=False)
+
+    # Send full list to joiner
+    emit("meet_participant_list", {
+        "meeting_id": meeting_id,
+        "participants": _meet_participants(meeting_id),
+    })
+
+    # Update DB attendance
+    try:
+        from app.models.meet_participant import MeetParticipant, AttendanceStatus
+        p = MeetParticipant.query.filter_by(
+            meeting_id=int(meeting_id), user_id=int(user_id)).first()
+        if p:
+            p.joined_at         = datetime.utcnow()
+            p.attendance_status = AttendanceStatus.attended
+            db.session.commit()
+    except Exception as e:
+        logging.warning(f"[MeetSocket] attendance update failed: {e}")
+
+    logging.info(f"[MeetSocket] {user_id} joined meeting {meeting_id}")
+
+
+@socketio.on("meet_leave")
+def handle_meet_leave(data):
+    """Client: { meeting_id }"""
+    sid        = request.sid
+    meeting_id = str((data or {}).get("meeting_id", ""))
+    lookup     = _sid_to_meeting.pop(sid, None)
+    if not lookup:
+        return
+    meeting_id, user_id = lookup
+    room_data   = _meeting_rooms.get(meeting_id, {})
+    participant = room_data.pop(user_id, None)
+    if not room_data:
+        _meeting_rooms.pop(meeting_id, None)
+    if participant:
+        leave_room(_meet_room(meeting_id))
+        socketio.emit("meet_participant_left", {
+            "meeting_id": meeting_id, "user_id": user_id,
+            "name": participant["name"], "reason": "left",
+            "left_at": datetime.utcnow().isoformat(),
+        }, room=_meet_room(meeting_id))
+        try:
+            from app.models.meet_participant import MeetParticipant
+            p = MeetParticipant.query.filter_by(
+                meeting_id=int(meeting_id), user_id=int(user_id)).first()
+            if p:
+                p.left_at = datetime.utcnow()
+                db.session.commit()
+        except Exception as e:
+            logging.warning(f"[MeetSocket] left_at update failed: {e}")
+
+
+@socketio.on("meet_cursor_move")
+def handle_meet_cursor_move(data):
+    """
+    Client: { meeting_id, x, y, page?, element_id? }
+    Throttle to ~10 events/sec on the client side.
+    """
+    lookup = _sid_to_meeting.get(request.sid)
+    if not lookup:
+        return
+    meeting_id, user_id = lookup
+    p = _meeting_rooms.get(meeting_id, {}).get(user_id)
+    if not p:
+        return
+    cursor = {
+        "x": data.get("x"), "y": data.get("y"),
+        "page": data.get("page"), "element_id": data.get("element_id"),
+    }
+    p["cursor"] = cursor
+    emit("meet_cursor_moved", {
+        "meeting_id": meeting_id, "user_id": user_id,
+        "name": p["name"], "avatar": p["avatar"], **cursor,
+    }, room=_meet_room(meeting_id), include_self=False)
+
+
+@socketio.on("meet_notes_change")
+def handle_meet_notes_change(data):
+    """
+    Client: { meeting_id, delta:{ops:[...]}, version:int, doc_id:str|null }
+    Last-write-wins. Clients use version to discard stale deltas.
+    """
+    lookup = _sid_to_meeting.get(request.sid)
+    if not lookup:
+        return
+    meeting_id, user_id = lookup
+    p = _meeting_rooms.get(meeting_id, {}).get(user_id)
+    if not p:
+        return
+    emit("meet_notes_delta", {
+        "meeting_id": meeting_id, "user_id": user_id, "name": p["name"],
+        "delta": data.get("delta"), "version": data.get("version"),
+        "doc_id": data.get("doc_id"), "ts": datetime.utcnow().isoformat(),
+    }, room=_meet_room(meeting_id), include_self=False)
+
+
+@socketio.on("meet_annotate")
+def handle_meet_annotate(data):
+    """
+    Client: { meeting_id, annotation_type, payload,
+              target_artifact_id?, source_timestamp? }
+    Saves to DB then broadcasts to ALL (including sender) with the DB id.
+    """
+    lookup = _sid_to_meeting.get(request.sid)
+    if not lookup:
+        return
+    meeting_id, user_id = lookup
+    ann_type = data.get("annotation_type")
+    if not ann_type:
+        emit("meet_error", {"message": "annotation_type required"})
+        return
+
+    payload = data.get("payload", {})
+    target  = data.get("target_artifact_id")
+    ts      = data.get("source_timestamp")
+    ann_id  = None
+
+    try:
+        from app.models.meet_annotation import MeetAnnotation, AnnotationType
+        ann = MeetAnnotation(
+            meeting_id         = int(meeting_id),
+            target_artifact_id = target,
+            annotation_type    = AnnotationType(ann_type),
+            payload_json       = payload,
+            source_timestamp   = ts,
+            created_by_user_id = int(user_id),
+        )
+        db.session.add(ann)
+        db.session.commit()
+        ann_id = ann.id
+    except Exception as e:
+        logging.error(f"[MeetSocket] annotation save error: {e}")
+        db.session.rollback()
+
+    p = _meeting_rooms.get(meeting_id, {}).get(user_id, {})
+    socketio.emit("meet_annotation_added", {
+        "meeting_id": meeting_id, "annotation_id": ann_id,
+        "annotation_type": ann_type, "payload": payload,
+        "target_artifact_id": target, "source_timestamp": ts,
+        "user_id": user_id, "name": p.get("name"),
+        "ts": datetime.utcnow().isoformat(),
+    }, room=_meet_room(meeting_id))
+
+
+@socketio.on("meet_annotation_delete")
+def handle_meet_annotation_delete(data):
+    """Client: { meeting_id, annotation_id }"""
+    lookup = _sid_to_meeting.get(request.sid)
+    if not lookup:
+        return
+    meeting_id, user_id = lookup
+    ann_id = data.get("annotation_id")
+    if not ann_id:
+        return
+    try:
+        from app.models.meet_annotation import MeetAnnotation
+        from app.models.meet_meeting import MeetMeeting
+        ann     = MeetAnnotation.query.filter_by(id=ann_id, meeting_id=int(meeting_id)).first()
+        meeting = MeetMeeting.query.get(int(meeting_id))
+        if not ann:
+            return
+        if str(ann.created_by_user_id) != user_id and str(meeting.owner_user_id) != user_id:
+            emit("meet_error", {"message": "Cannot delete another user's annotation"})
+            return
+        db.session.delete(ann)
+        db.session.commit()
+        socketio.emit("meet_annotation_deleted", {
+            "meeting_id": meeting_id, "annotation_id": ann_id,
+            "deleted_by": user_id,
+        }, room=_meet_room(meeting_id))
+    except Exception as e:
+        logging.error(f"[MeetSocket] annotation delete error: {e}")
+        db.session.rollback()
+
+
+@socketio.on("meet_heartbeat")
+def handle_meet_heartbeat(data):
+    """Client: { meeting_id } — send every 30s to stay in the room."""
+    lookup = _sid_to_meeting.get(request.sid)
+    if not lookup:
+        return
+    meeting_id, _ = lookup
+    emit("meet_heartbeat_ack", {
+        "meeting_id": meeting_id,
+        "ts": datetime.utcnow().isoformat(),
+    })
+
+
+# ── Meet helper — callable from Flask HTTP routes ──────────────────────────────
+
+def emit_meeting_event(meeting_id, event, data):
+    """Push any event to all live participants from a Flask route."""
+    socketio.emit(event, data, room=_meet_room(str(meeting_id)))
+
+
+def get_live_participants(meeting_id):
+    """Return currently connected participants for a meeting."""
+    return _meet_participants(str(meeting_id))
+
+
+# ─── General helper functions (called from Flask routes) ──────────────────────
 
 def emit_to_user(user_id, event, data):
     socketio.emit(event, data, room=f"user_{user_id}")
 
 def emit_new_message(conversation_id, message_data):
     socketio.emit("new_message", {
-        "message":         message_data,
-        "conversation_id": conversation_id,
+        "message": message_data, "conversation_id": conversation_id,
     }, room=f"conversation_{conversation_id}")
 
 def emit_message_edited(conversation_id, message_data):
     socketio.emit("message_edited", {
-        "message":         message_data,
-        "conversation_id": conversation_id,
+        "message": message_data, "conversation_id": conversation_id,
     }, room=f"conversation_{conversation_id}")
 
 def emit_message_deleted(conversation_id, message_id):
     socketio.emit("message_deleted", {
-        "message_id":      message_id,
-        "conversation_id": conversation_id,
+        "message_id": message_id, "conversation_id": conversation_id,
     }, room=f"conversation_{conversation_id}")
 
 def emit_notification(user_id, notification_data):

@@ -3,10 +3,8 @@ SF Collab Auth Routes
 Updated with notification triggers for account events
 """
 
-from urllib import response
-from flask import Blueprint, request, jsonify, redirect, url_for
+from flask import Blueprint, request, jsonify, redirect, url_for, session
 from app.extensions import oauth, db, limiter
-from flask import session
 from flask_jwt_extended import (
     create_access_token, 
     create_refresh_token,
@@ -25,7 +23,6 @@ from app.models.refreshToken import RefreshToken
 from app.models.userPermission import UserPermission
 from app.models.activity import Activity
 from app.utils.helper import utc_now_str
-from app.models.waitlist import Waitlist
 from app.models.chatConversation import ChatConversation
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
@@ -59,7 +56,6 @@ def init_oauth(app):
     # =========================
     if not app.config.get("GOOGLE_CLIENT_ID"):
         raise RuntimeError("GOOGLE_CLIENT_ID is not set")
-
     if not app.config.get("GOOGLE_CLIENT_SECRET"):
         raise RuntimeError("GOOGLE_CLIENT_SECRET is not set")
 
@@ -140,12 +136,10 @@ def grant_default_permissions(user_id):
                 is_granted=True
             )
             db.session.add(perm)
-            count += 1
         except Exception:
             pass
     
     db.session.commit()
-    return count
 
 
 def get_user_response_data(user):
@@ -155,14 +149,14 @@ def get_user_response_data(user):
 
 
 # ========================== REGISTER ==========================
+
 @bp.route('/register', methods=['POST'])
 def register():
     """Register new user"""
     try:
         data = request.get_json()
-        
-        required_fields = ['email', 'password', 'firstName', 'lastName']
-        for field in required_fields:
+
+        for field in ['email', 'password', 'firstName', 'lastName']:
             if not data.get(field):
                 return error_response(f'{field} is required', 400)
         
@@ -241,18 +235,18 @@ def register():
             "access_token": access_token,
             "refresh_token": refresh_token
         })
-        
+
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
-
         return response
-        
+
     except Exception as e:
         db.session.rollback()
         return error_response(f'Registration failed: {str(e)}', 500)
 
 
 # ========================== LOGIN ==========================
+
 @bp.route('/login', methods=['POST'])
 @limiter.limit("10 per minute")  # Rate limit to prevent brute force
 def login():
@@ -265,21 +259,18 @@ def login():
         email = data.get('email')
         password = data.get('password')
         print(f"DEBUG: Email: {email}, Password provided: {bool(password)}")
-        
+
         if not email or not password:
-            print("DEBUG: Missing email or password")
             return error_response('Email and password are required', 400)
-        
+
         user = User.query.filter_by(email=email.lower()).first()
         print(f"DEBUG: User found: {bool(user)}, Email: {email.lower()}")
-        
+
         if not user or not check_password_hash(user.password, password):
-            print("DEBUG: Invalid credentials")
             return error_response('Invalid email or password', 401)
-        
+
         print(f"DEBUG: User status: {user.status}")
         if user.status == 'suspended':
-            print("DEBUG: Account suspended")
             return error_response('Account is suspended', 403)
         
         # Check for new device login
@@ -309,7 +300,7 @@ def login():
         print("DEBUG: Tokens generated")
         save_refresh_token(user.id, refresh_token)
         print("DEBUG: Refresh token saved")
-        
+
         user_response = get_user_response_data(user)
         print(f"DEBUG: User response data prepared")
         
@@ -323,9 +314,8 @@ def login():
 
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
-
         return response
-        
+
     except Exception as e:
         print(f"DEBUG: Exception in login: {str(e)}")
         print(f"DEBUG: Traceback: {traceback.format_exc()}")
@@ -333,13 +323,13 @@ def login():
 
 
 # ========================== VERIFY EMAIL ==========================
+
 @bp.route('/send-verification-code', methods=['POST'])
 @jwt_required()
 @limiter.limit("10 per minute")
 def send_verification_code():
     """Send email verification code"""
     import random
-    from flask_jwt_extended import create_access_token
 
     
     try:
@@ -348,7 +338,7 @@ def send_verification_code():
         
         if not user or not user.email:
             return error_response('User or email not found', 404)
-        
+
         code = random.randint(100000, 999999)
         user.verification_code = str(code)
         user.verification_code_expires_at = datetime.utcnow() + timedelta(minutes=10)
@@ -364,10 +354,10 @@ def send_verification_code():
         decoded_verification = decode_token(verification_token)
         print("DEBUG: Verification token claims:", decoded_verification)     
         return success_response({
-            'message': 'Verification code sent to email',
+            'message':            'Verification code sent to email',
             'verification_token': verification_token
         })
-        
+
     except Exception as e:
         print(f"DEBUG: Exception in send_verification_code: {str(e)}")
         return error_response(str(e), 500)
@@ -411,6 +401,7 @@ def verify_code():
 
 
 # ========================== PASSWORD RESET ==========================
+
 @bp.route('/forgot-password', methods=['POST'])
 @limiter.limit("5 per hour")  # Limit to prevent abuse
 def forgot_password():
@@ -418,10 +409,10 @@ def forgot_password():
     try:
         data = request.get_json()
         email = data.get('email')
-        
+
         if not email:
             return error_response('Email is required', 400)
-        
+
         user = User.query.filter_by(email=email.lower()).first()
         
         if user:
@@ -437,7 +428,7 @@ def forgot_password():
         return success_response({
             'message': 'If an account exists with this email, you will receive password reset instructions.'
         })
-        
+
     except Exception as e:
         return error_response('Failed to process request', 500)
 
@@ -450,7 +441,7 @@ def reset_password():
         data = request.get_json()
         token = data.get('access_token')
         new_password = data.get('new_password')
-        
+
         if not token or not new_password:
             return error_response('Token and new password are required', 400)
         
@@ -458,7 +449,7 @@ def reset_password():
         # For now, return not implemented
         
         return error_response('Password reset not yet implemented', 501)
-        
+
     except Exception as e:
         return error_response(str(e), 500)
 
@@ -477,12 +468,12 @@ def change_password():
         
         if not current_password or not new_password:
             return error_response('Current and new password are required', 400)
-        
+
         user = User.query.get(int(user_id))
         
         if not check_password_hash(user.password, current_password):
             return error_response('Current password is incorrect', 400)
-        
+
         user.password = generate_password_hash(new_password)
         db.session.commit()
         
@@ -508,6 +499,7 @@ def change_password():
 
 
 # ========================== REFRESH TOKEN ==========================
+
 @bp.route('/refresh', methods=['POST'])
 @jwt_required(refresh=True)
 @limiter.limit("10 per hour")
@@ -525,14 +517,14 @@ def refresh():
         
         response = jsonify({"message": "Token refreshed"})
         set_access_cookies(response, new_access_token)
-        
         return response
-        
+
     except Exception as e:
         return error_response(f'Token refresh failed: {str(e)}', 500)
 
 
 # ========================== LOGOUT ==========================
+
 @bp.route('/logout', methods=['POST'])
 @limiter.limit("10 per hour")
 @jwt_required()
@@ -557,12 +549,13 @@ def logout():
         unset_jwt_cookies(response)
         
         return response
-        
+
     except Exception as e:
         return error_response(f'Logout failed: {str(e)}', 500)
 
 
 # ========================== GET CURRENT USER ==========================
+
 @bp.route('/me', methods=['GET'])
 @jwt_required()
 def get_current_user():
@@ -585,6 +578,7 @@ def get_current_user():
 
 
 # ========================== GOOGLE OAUTH ==========================
+
 @bp.route('/google', methods=['GET'])
 @limiter.limit("10 per hour")
 def google_login():
@@ -592,8 +586,7 @@ def google_login():
     session.pop('google_token', None)
     session.pop('_oauth_token_google', None)
     session.pop('_oauth_state_google', None)
-    redirect_uri = Config.GOOGLE_REDIRECT_URI
-    return oauth.google.authorize_redirect(redirect_uri)
+    return oauth.google.authorize_redirect(Config.GOOGLE_REDIRECT_URI)
 
 
 @bp.route('/google/callback', methods=['GET'])
@@ -603,10 +596,10 @@ def google_callback():
     try:
         token = oauth.google.authorize_access_token()
         user_info = token.get('userinfo')
-        
+
         if not user_info:
             return _oauth_error_response('google', 'Failed to get user info')
-        
+
         email = user_info.get('email')
         if not email:
             return _oauth_error_response('google', 'Email not provided')
@@ -614,7 +607,7 @@ def google_callback():
         # Check if user exists
         user = User.query.filter_by(email=email.lower()).first()
         is_new_user = False
-        
+
         if not user:
             is_new_user = True
             user = User(
@@ -701,19 +694,19 @@ def google_callback():
                 </script>
             </html>
         """
-        
+
     except Exception as e:
         print(f"Google OAuth error: {str(e)}")
         return _oauth_error_response('google', str(e))
 
 
 # ========================== GITHUB OAUTH ==========================
+
 @bp.route('/github', methods=['GET'])
 @limiter.limit("10 per hour")
 def github_login():
     """Initiate GitHub OAuth"""
-    redirect_uri = Config.GITHUB_REDIRECT_URI
-    return oauth.github.authorize_redirect(redirect_uri)
+    return oauth.github.authorize_redirect(Config.GITHUB_REDIRECT_URI)
 
 
 @bp.route('/github/callback', methods=['GET'])
@@ -737,13 +730,11 @@ def github_callback():
             if email_obj.get('primary') and email_obj.get('verified'):
                 primary_email = email_obj.get('email')
                 break
-        
         if not primary_email:
             for email_obj in emails:
                 if email_obj.get('verified'):
                     primary_email = email_obj.get('email')
                     break
-        
         if not primary_email:
             username = user_info.get('login')
             if username:
@@ -754,12 +745,13 @@ def github_callback():
         # Check if user exists
         user = User.query.filter_by(email=primary_email.lower()).first()
         is_new_user = False
-        
+
         if not user:
             is_new_user = True
+            name_parts  = (user_info.get('name') or '').split()
             user = User(
-                first_name=user_info.get('name', '').split()[0] if user_info.get('name') else '',
-                last_name=' '.join(user_info.get('name', '').split()[1:]) if user_info.get('name') else '',
+                first_name=name_parts[0] if name_parts else '',
+                last_name=' '.join(name_parts[1:]) if len(name_parts) > 1 else '',
                 email=primary_email.lower(),
                 password=generate_password_hash(
                     f"oauth_github_{user_info['id']}_{os.urandom(16).hex()}"
@@ -841,14 +833,16 @@ def github_callback():
                 </script>
             </html>
         """
-        
+
     except Exception as e:
         print(f"GitHub OAuth error: {str(e)}")
         return _oauth_error_response('github', str(e))
 
 
+# ========================== OAUTH ERROR HELPER ==========================
+
 def _oauth_error_response(provider, error_message):
-    """Helper function to return OAuth error response"""
+    """Return OAuth error to the popup window"""
     return f"""
         <html>
             <script>
