@@ -224,8 +224,7 @@ def register():
         set_access_cookies(response, access_token)
         set_refresh_cookies(response, refresh_token)
 
-        return response
-        
+        return response      
     except Exception as e:
         db.session.rollback()
         return error_response(f'Registration failed: {str(e)}', 500)

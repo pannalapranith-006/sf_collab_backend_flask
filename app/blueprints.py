@@ -1,3 +1,5 @@
+from app.routes import milestone_file_routes
+
 from .routes import (
     main_routes,
     auth_routes,

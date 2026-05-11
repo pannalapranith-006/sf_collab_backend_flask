@@ -51,6 +51,7 @@ from .product_purchase import ProductPurchase
 from .user_inventory import UserInventory
 from .EventTokenBalance import EventTokenBalance
 from .aiNews import AINewsArticle
+from .builder_profile import BuilderProfile
 from .vision import Vision
 from .collaboration_request import CollaborationRequest
 from .ideaCollabRequest import IdeaCollabRequest
