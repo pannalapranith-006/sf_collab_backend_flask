@@ -75,9 +75,7 @@ from .mentor import MentorProfile, MentorSession, MentorshipRequest
 from .attendance import Attendance
 from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
-from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
 from .erp_activity import UserActivity, ActivityMonitorJobHealth
-#from .analytics import AnalyticsSnapshot
 
 #  SF Drive Module 
 # ... existing imports ...
@@ -86,12 +84,7 @@ from .drive_folder import DriveFolder
 from .drive_permission import DriveFilePermission
 from .drive_file_relation import DriveFileRelation
 from .drive_audit_log import DriveAuditLog
-# Legacy SF Drive models – keep commented unless used elsewhere
-# from .sfdrive_file import SFFile
-# from .sfdrivefolder import Folder
-# from .sfdrive_tag import Tag
-
-# Legacy SF Drive models – keep commented unless needed elsewhere
-# from .sfdrive_file import SFFile
-# from .sfdrivefolder import Folder
-# from .sfdrive_tag import Tag
+# ... SF reputation system imports ...
+from .rp_work_task import WorkTask
+from .rp_work_milestone import WorkMilestone
+from .rp_job_status import JobStatus

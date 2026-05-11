@@ -75,7 +75,7 @@ from .routes import (
 
 # ── ERP Module ────────────────────────────────────────────────────────────────
 from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
-from .routes.analytics_routes import analytics_bp
+#from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
 from .routes.erpDocument_routes import documents_bp
 
@@ -111,6 +111,11 @@ from app.routes.drive_meetings_routes import drive_meetings_bp
 from app.routes.drive_audit_routes import drive_audit_bp
 from app.routes.drive_permission_routes import drive_permission_bp
 from app.routes.milestone_drive_routes import milestone_drive_bp
+
+#  SF Reputation System
+from app.routes.rp_work_tasks_routes import work_tasks_bp
+from app.routes.rp_work_milestones_routes import work_milestones_bp
+from app.routes.rp_batch_routes import batch_bp
 
 blueprints = [
     {"blueprint": main_routes.main_bp, "url_prefix": "/"},
@@ -180,7 +185,6 @@ blueprints = [
     {"blueprint": attendance_bp, "url_prefix": "/api/attendance"},
     {"blueprint": alerts_bp, "url_prefix": "/api/erp-alerts"},
     {"blueprint": daily_updates_bp, "url_prefix": "/api/daily-updates"},
-    {"blueprint": analytics_bp, "url_prefix": "/analytics"},
     {"blueprint": activity_monitor_bp, "url_prefix": "/api/activity"},
     # SF Drive main
     {"blueprint": drive_bp, "url_prefix": "/api/drive"},
@@ -190,4 +194,7 @@ blueprints = [
     {"blueprint": drive_audit_bp, "url_prefix": "/api/drive/audit"},
     {"blueprint": drive_permission_bp, "url_prefix": "/api/drive/permissions"},
     {"blueprint": milestone_drive_bp, "url_prefix": "/api/milestones"},
+    { "blueprint": work_tasks_bp, "url_prefix": "/api/workspaces/<int:workspace_id>/tasks" },
+    { "blueprint": work_milestones_bp, "url_prefix": "/api/workspaces/<int:workspace_id>/milestones" },
+    { "blueprint": batch_bp, "url_prefix": "/api/batch" },
 ]

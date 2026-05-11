@@ -385,5 +385,8 @@ Response: {response_preview}
         payload = request.json
         print(event, payload)
         return '', 200
+    
+    from app.jobs.rp_job_commands import batch_cli
+    app.cli.add_command(batch_cli)
 
     return app

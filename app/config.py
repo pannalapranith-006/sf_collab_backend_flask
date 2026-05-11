@@ -287,3 +287,7 @@ def get_config(name=None):
     if name is None:
         name = os.getenv("FLASK_ENV", "development")
     return config.get(name, DevelopmentConfig)
+
+# Event Ingestion (Backend Dev 5)
+EVENT_INGESTION_URL = os.environ.get('EVENT_INGESTION_URL', 'http://localhost:5000/api/ingest/event')
+EVENT_SERVICE_TOKEN = os.environ.get('EVENT_SERVICE_TOKEN', 'dev-token')
