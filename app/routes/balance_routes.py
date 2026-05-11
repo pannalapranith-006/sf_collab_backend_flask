@@ -1,6 +1,5 @@
 """
 Balance Routes — Real Money API
-================================
 Handles all real-money (Balance) operations.
 
 IMPORTANT: These endpoints deal with REAL financial value.

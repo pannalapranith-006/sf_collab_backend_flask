@@ -1,3 +1,4 @@
+from app.extensions import db
 from .user import User
 from .userAchievement import UserAchievement
 from .startup import Startup, StartupView
@@ -66,11 +67,6 @@ from .EscrowTransaction import EscrowTransaction
 # Economy Layer 3
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
 
-#SFDrive Folder System
-from .sfdrivefolder import Folder
-from .sfdrive_file import SFFile
-#SFDRIVE tagging system
-from .sfdrive_tag import Tag
 from .marketplace_purchase import MarketplacePurchase
 from .mentor import MentorProfile, MentorSession, MentorshipRequest
 
@@ -80,9 +76,11 @@ from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
 from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
 from .analytics import AnalyticsSnapshot
+from .erp_activity import UserActivity, ActivityMonitorJobHealth
+#from .analytics import AnalyticsSnapshot
 
 #  SF Drive Module 
-from .drive_folder import DriveFolder
+# ... existing imports ...
 from .drive_file import DriveFile, DriveFileVersion
 from .drive_permission import DriveFilePermission, DriveFileRelation
 
@@ -90,3 +88,16 @@ from .drive_permission import DriveFilePermission, DriveFileRelation
 from app.models.drive_file import DriveFile                             
 from app.models.drive_file_relation import DriveFileRelation
 from app.models.drive_audit_log import DriveAuditLog
+from .drive_folder import DriveFolder
+from .drive_permission import DriveFilePermission
+from .drive_file_relation import DriveFileRelation
+from .drive_audit_log import DriveAuditLog
+# Legacy SF Drive models – keep commented unless used elsewhere
+# from .sfdrive_file import SFFile
+# from .sfdrivefolder import Folder
+# from .sfdrive_tag import Tag
+
+# Legacy SF Drive models – keep commented unless needed elsewhere
+# from .sfdrive_file import SFFile
+# from .sfdrivefolder import Folder
+# from .sfdrive_tag import Tag

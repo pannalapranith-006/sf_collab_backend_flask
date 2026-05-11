@@ -1,6 +1,5 @@
 """
 EscrowTransaction Model — Milestone Payment Trust Layer
-=========================================================
 Escrow holds real-money Balance funds safely between a Payer (Founder)
 and a Payee (Contributor / Mentor) while a milestone is in progress.
 
