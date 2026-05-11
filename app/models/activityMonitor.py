@@ -22,7 +22,9 @@ from sqlalchemy import Index, UniqueConstraint, and_, func, inspect as sa_inspec
 from sqlalchemy.orm import joinedload
 
 from app.extensions import limiter
-from models import Alert, User, db
+from app.extensions import db
+from app.models.alert import Alert
+from app.models.user import User
 
 
 logger = logging.getLogger(__name__)

@@ -29,7 +29,7 @@ services:
       MYSQL_USER: ${MYSQL_USER:-sfcollab}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sfcollab_pass}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysqldata:/var/lib/mysql
     healthcheck:

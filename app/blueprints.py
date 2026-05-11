@@ -1,12 +1,12 @@
 from app.routes import milestone_file_routes
 
 from .routes import (
+    main_routes,
     auth_routes,
     user_routes,
     profile_routes,
     idea_routes,
     knowledge_routes,
-    main_routes,
     startup_routes,
     project_goal_routes,
     startup_bookmark_routes,
@@ -58,7 +58,7 @@ from .routes import (
     pitch_deck_routes,
     wallet_routes,
     store_routes,
-    ai_news_routes,
+    # ai_news_routes,  # disabled — requires: pip install feedparser
     matchmaking_routes,
     collaboration_routes,
     marketplace_routes,
@@ -67,15 +67,39 @@ from .routes import (
     crystal_routes,
     activation_routes,
     mentorship_routes,
-    erp_routes,
-    milestone_file_routes,
-    drive_routes,
 )
 
 # ── ERP Module ────────────────────────────────────────────────────────────────
 from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
 from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
+from .routes.erpDocument_routes import documents_bp
+
+# ── SF Drive Module ───────────────────────────────────────────────────────────
+# FIX: drive route modules (drive_files_routes, drive_file_relation_routes, etc.)
+# import DriveFile from app.models.drive_file at module load time. If they are
+# included in the `from .routes import (...)` tuple above, Python loads them
+# before app/models/__init__.py has finished executing, causing SQLAlchemy to
+# see the DriveFile class / 'drive_files' table registered twice and crash with:
+#   "Table 'drive_files' is already defined for this MetaData instance"
+#
+# Importing them here (after the main .routes tuple) is safe because by this
+# point the models package is already cached by Python's import system.
+from .routes.drive_routes import drive_bp
+
+try:
+    from app.routes import (
+        drive_files_routes,
+        drive_file_relation_routes,
+        drive_meetings_routes,
+        drive_audit_routes,
+    )
+    _drive_routes_available = True
+except ImportError as e:
+    print(f"⚠  SF Drive routes not available: {e}")
+    _drive_routes_available = False
+
+
 blueprints = [
     { "blueprint": main_routes.main_bp,                              "url_prefix": '/' },
     { "blueprint": auth_routes.bp,                                   "url_prefix": '/api/auth' },
@@ -113,35 +137,35 @@ blueprints = [
     { "blueprint": task_routes.tasks_bp,                             "url_prefix": '/api/tasks' },
     { "blueprint": user_achievement_routes.user_achievements_bp,     "url_prefix": '/api/user-achievements' },
     { "blueprint": access_request_routes.access_requests_bp,         "url_prefix": '/api/access-requests' },
-    { "blueprint": permission_routes.permissions_bp,                 "url_prefix": '/api/permissions' },
-    { "blueprint": user_permission_routes.user_permissions_bp,       "url_prefix": '/api/user-permissions' },
-    { "blueprint": friend_request_routes.friend_requests_bp,         "url_prefix": '/api/friend-requests' },
-    { "blueprint": activity_routes.activities_bp,                    "url_prefix": '/api/activities' },
-    { "blueprint": waitlist_routes.waitlist_bp,                      "url_prefix": '/api/waitlist' },
-    { "blueprint": business_plan_routes.plans_bp,                    "url_prefix": '/api/plans' },
-    { "blueprint": image_editor_routes.image_editor_bp,              "url_prefix": '/api/image-editor' },
-    { "blueprint": cf_img_proccessing_routes.cf_bp,                  "url_prefix": '/api/cf' },
-    { "blueprint": feedback_routes.feedback_bp,                      "url_prefix": '/api/feedback' },
-    { "blueprint": user_roles_routes.user_roles_bp,                  "url_prefix": '/api/user-roles' },
-    { "blueprint": application_routes.applications_bp,               "url_prefix": '/api/applications' },
-    { "blueprint": contribution_ideas_routes.bp,                     "url_prefix": '/api/contribution-ideas' },
-    { "blueprint": contribution_polls_routes.poll_bp,                "url_prefix": '/api/contribution-polls' },
-    { "blueprint": payment_routes.payment_bp,                        "url_prefix": '/api/payments' },
-    { "blueprint": outreach_routes.outreach_bp,                      "url_prefix": '/api/outreach' },
-    { "blueprint": connection_routes.connections_bp,                 "url_prefix": '/api/connections' },
-    { "blueprint": user_social_routes.user_social_bp,                "url_prefix": '/api/user-social' },
-    { "blueprint": dashboard_routes.dashboard_bp,                    "url_prefix": '/api/dashboard' },
-    { "blueprint": pitch_deck_routes.pitch_decks_bp,                 "url_prefix": '/api/pitch-decks' },
-    { "blueprint": wallet_routes.wallet_bp,                          "url_prefix": '/api/wallet' },
-    { "blueprint": store_routes.store_bp,                            "url_prefix": '/api/store' },
-    { "blueprint": matchmaking_routes.matchmaking_bp,                "url_prefix": '/api/matchmaking' },
-    { "blueprint": collaboration_routes.collab_bp,                   "url_prefix": '/api/collaboration' },
-    { "blueprint": marketplace_routes.marketplace_bp,                "url_prefix": '/api/marketplace' },
-    { "blueprint": readiness_routes.readiness_bp,                    "url_prefix": '/api/readiness' },
-    { "blueprint": balance_routes.balance_bp,                        "url_prefix": '/api/balance' },
-    { "blueprint": crystal_routes.crystals_bp,                       "url_prefix": '/api/crystals' },
-    { "blueprint": activation_routes.activation_bp,                  "url_prefix": '/api/activation' },
-    { "blueprint": mentorship_routes.mentorship_bp,                  "url_prefix": '/api/mentorship' },
+    { "blueprint": permission_routes.permissions_bp,                  "url_prefix": '/api/permissions' },
+    { "blueprint": user_permission_routes.user_permissions_bp,        "url_prefix": '/api/user-permissions' },
+    { "blueprint": friend_request_routes.friend_requests_bp,          "url_prefix": '/api/friend-requests' },
+    { "blueprint": activity_routes.activities_bp,                     "url_prefix": '/api/activities' },
+    { "blueprint": waitlist_routes.waitlist_bp,                       "url_prefix": '/api/waitlist' },
+    { "blueprint": business_plan_routes.plans_bp,                     "url_prefix": '/api/plans' },
+    { "blueprint": image_editor_routes.image_editor_bp,               "url_prefix": '/api/image-editor' },
+    { "blueprint": cf_img_proccessing_routes.cf_bp,                   "url_prefix": '/api/cf' },
+    { "blueprint": feedback_routes.feedback_bp,                       "url_prefix": '/api/feedback' },
+    { "blueprint": user_roles_routes.user_roles_bp,                   "url_prefix": '/api/user-roles' },
+    { "blueprint": application_routes.applications_bp,                "url_prefix": '/api/applications' },
+    { "blueprint": contribution_ideas_routes.bp,                      "url_prefix": '/api/contribution-ideas' },
+    { "blueprint": contribution_polls_routes.poll_bp,                 "url_prefix": '/api/contribution-polls' },
+    { "blueprint": payment_routes.payment_bp,                         "url_prefix": '/api/payments' },
+    { "blueprint": outreach_routes.outreach_bp,                       "url_prefix": '/api/outreach' },
+    { "blueprint": connection_routes.connections_bp,                   "url_prefix": '/api/connections' },
+    { "blueprint": user_social_routes.user_social_bp,                 "url_prefix": '/api/user-social' },
+    { "blueprint": dashboard_routes.dashboard_bp,                     "url_prefix": '/api/dashboard' },
+    { "blueprint": pitch_deck_routes.pitch_decks_bp,                  "url_prefix": '/api/pitch-decks' },
+    { "blueprint": wallet_routes.wallet_bp,                           "url_prefix": '/api/wallet' },
+    { "blueprint": store_routes.store_bp,                             "url_prefix": '/api/store' },
+    { "blueprint": matchmaking_routes.matchmaking_bp,                 "url_prefix": '/api/matchmaking' },
+    { "blueprint": collaboration_routes.collab_bp,                    "url_prefix": '/api/collaboration' },
+    { "blueprint": marketplace_routes.marketplace_bp,                 "url_prefix": '/api/marketplace' },
+    { "blueprint": readiness_routes.readiness_bp,                     "url_prefix": '/api/readiness' },
+    { "blueprint": balance_routes.balance_bp,                         "url_prefix": '/api/balance' },
+    { "blueprint": crystal_routes.crystals_bp,                        "url_prefix": '/api/crystals' },
+    { "blueprint": activation_routes.activation_bp,                   "url_prefix": '/api/activation' },
+    { "blueprint": mentorship_routes.mentorship_bp,                   "url_prefix": '/api/mentorship' },
 
     # ── ERP Module ────────────────────────────────────────────────────────────
     { "blueprint": attendance_bp,        "url_prefix": '/api/attendance' },
@@ -149,11 +173,13 @@ blueprints = [
     { "blueprint": analytics_bp,         "url_prefix": '/analytics' },
     { "blueprint": activity_monitor_bp,  "url_prefix": '/api/activity' },
     { "blueprint": daily_updates_bp,     "url_prefix": '/api/daily-updates' },
-    
-    # Milestone Integration
-    { "blueprint": milestone_file_routes.milestone_files_bp, "url_prefix": '/api/milestone-files' },
-    
+    { "blueprint": documents_bp,         "url_prefix": '/api' },
 
-    { "blueprint": drive_routes.drive_bp, "url_prefix": '/api/drive' },
-]
-
+    # ── SF Drive Module ───────────────────────────────────────────────────────
+    { "blueprint": drive_bp, "url_prefix": '/api/drive' },
+] + ([
+    { "blueprint": drive_files_routes.drive_file_bp,                "url_prefix": '/api/drive/files' },
+    { "blueprint": drive_file_relation_routes.drive_file_relation_bp,"url_prefix": '/api/drive/relations' },
+    { "blueprint": drive_meetings_routes.drive_meetings_bp,          "url_prefix": '/api/drive/meetings' },
+    { "blueprint": drive_audit_routes.drive_audit_bp,                "url_prefix": '/api/drive/audit' },
+] if _drive_routes_available else [])

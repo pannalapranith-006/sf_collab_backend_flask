@@ -505,7 +505,7 @@ def upgrade():
     sa.Column('author_first_name', sa.String(length=100), nullable=True),
     sa.Column('author_last_name', sa.String(length=100), nullable=True),
     sa.Column('content', sa.Text(), nullable=False),
-    sa.Column('type', sa.Enum('professional', 'social', 'image', 'video', 'text', name='posttype'), nullable=True),
+    sa.Column('type', sa.Enum('professional', 'social', 'casual', 'image', 'video', 'text', name='posttype'), nullable=True),
     sa.Column('tags', sa.JSON(), nullable=True),
     sa.Column('likes', sa.Integer(), nullable=True),
     sa.Column('comments_count', sa.Integer(), nullable=True),

@@ -1,4 +1,4 @@
-import enum
+﻿import enum
 from datetime import datetime
 from app.extensions import db
 
@@ -18,7 +18,7 @@ class AlertPriority(enum.Enum):
 
 
 class Alert(db.Model):
-    __tablename__ = 'erp_alerts'   # prefixed to avoid any collision with existing alert tables
+    __tablename__ = 'erp_alerts'
 
     id              = db.Column(db.Integer, primary_key=True)
     workspace_id    = db.Column(db.Integer, nullable=False, index=True)
@@ -39,7 +39,8 @@ class Alert(db.Model):
         db.Index('idx_erp_alert_lookup', 'workspace_id', 'user_id', 'type', 'resolved', 'archived'),
     )
 
-    user     = db.relationship('User', foreign_keys=[user_id],   backref=db.backref('erp_alerts', lazy='dynamic'))
+    user     = db.relationship('User', foreign_keys=[user_id],
+                               backref=db.backref('erp_alerts', lazy='select'))
     resolver = db.relationship('User', foreign_keys=[resolved_by])
 
     def to_dict(self):

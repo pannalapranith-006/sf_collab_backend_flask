@@ -1,4 +1,4 @@
-from datetime import datetime, time
+﻿from datetime import datetime, time
 from app.extensions import db
 
 
@@ -7,16 +7,16 @@ class Attendance(db.Model):
 
     id             = db.Column(db.Integer, primary_key=True)
     user_id        = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
-    workspace_id   = db.Column(db.Integer, nullable=False, index=True)  # logical grouping — no FK until Workspace model exists
+    workspace_id   = db.Column(db.Integer, nullable=False, index=True)
     date           = db.Column(db.Date, nullable=False)
     clock_in_time  = db.Column(db.DateTime)
     clock_out_time = db.Column(db.DateTime)
-    status         = db.Column(db.String(20), nullable=False)   # present / late / absent
+    status         = db.Column(db.String(20), nullable=False)
     notes          = db.Column(db.Text)
     created_at     = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at     = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    user = db.relationship('User', backref=db.backref('attendance_records', lazy='dynamic'))
+    user = db.relationship('User', backref=db.backref('attendance_records', lazy='select'))
 
     __table_args__ = (
         db.UniqueConstraint('user_id', 'date', 'workspace_id',
