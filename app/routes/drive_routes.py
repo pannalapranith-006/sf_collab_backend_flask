@@ -3,24 +3,18 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
 from app.models.drive_file import DriveFile
 from app.models.drive_folder import DriveFolder
-from app.models.startup import Startup
-from app.models.startUpMember import StartupMember
 from app.utils.response_helpers import success_response, error_response
 
 drive_bp = Blueprint('drive', __name__, url_prefix='/api/drive')
 
-def _authorize_workspace(workspace_id, user_id):
-    startup = Startup.query.get(workspace_id)
-    if not startup:
-        return None, error_response('Workspace not found', 404)
-    is_member = StartupMember.query.filter_by(
-        startup_id=workspace_id, user_id=user_id, is_active=True).first()
-    is_creator = startup.creator_id == user_id
-    if not is_member and not is_creator:
-        return None, error_response('Unauthorized access to this workspace', 403)
-    return startup, None
 
-# Folders
+def _authorize_workspace(workspace_id, user_id):
+    """Drive uses user.id as workspace_id. No startup required."""
+    if int(workspace_id) != int(user_id):
+        return None, error_response('Unauthorized access to this workspace', 403)
+    return True, None
+
+
 @drive_bp.route('/folders', methods=['GET'])
 @jwt_required()
 def list_folders():
@@ -33,6 +27,7 @@ def list_folders():
         return err
     folders = DriveFolder.query.filter_by(workspace_id=workspace_id).all()
     return success_response([f.to_dict() for f in folders])
+
 
 @drive_bp.route('/folders', methods=['POST'])
 @jwt_required()
@@ -56,6 +51,7 @@ def create_folder():
     db.session.commit()
     return success_response(folder.to_dict(), 201)
 
+
 @drive_bp.route('/folders/<int:folder_id>', methods=['PUT'])
 @jwt_required()
 def update_folder(folder_id):
@@ -72,6 +68,7 @@ def update_folder(folder_id):
     db.session.commit()
     return success_response(folder.to_dict())
 
+
 @drive_bp.route('/folders/<int:folder_id>', methods=['DELETE'])
 @jwt_required()
 def delete_folder(folder_id):
@@ -82,9 +79,9 @@ def delete_folder(folder_id):
         return err
     db.session.delete(folder)
     db.session.commit()
-    return success_response({'message': 'Folder deleted'}, 200)
+    return success_response({'message': 'Folder deleted'})
 
-# Files (lightweight metadata CRUD)
+
 @drive_bp.route('/files', methods=['GET'])
 @jwt_required()
 def list_files():
@@ -96,11 +93,14 @@ def list_files():
     if err:
         return err
     folder_id = request.args.get('folder_id', type=int)
-    query = DriveFile.query.filter_by(workspace_id=workspace_id, state='active')
+    query = DriveFile.query.filter(
+        DriveFile.workspace_id == workspace_id,
+        DriveFile.state != 'deleted'
+    )
     if folder_id is not None:
         query = query.filter_by(folder_id=folder_id)
-    files = query.all()
-    return success_response([f.to_dict() for f in files])
+    return success_response([f.to_dict() for f in query.all()])
+
 
 @drive_bp.route('/files', methods=['POST'])
 @jwt_required()
@@ -121,7 +121,7 @@ def create_file_metadata():
         folder_id=data.get('folder_id'),
         mime_type=data.get('mime_type', 'application/octet-stream'),
         size_bytes=data.get('size_bytes', 0),
-        owner_scope_type=data.get('owner_scope_type', 'startup'),
+        owner_scope_type=data.get('owner_scope_type', 'personal'),
         owner_scope_id=data.get('owner_scope_id', workspace_id),
         owner_user_id=current_user_id,
         visibility_scope=data.get('visibility_scope', 'private'),
@@ -132,6 +132,20 @@ def create_file_metadata():
     db.session.add(file)
     db.session.commit()
     return success_response(file.to_dict(), 201)
+
+
+@drive_bp.route('/files/<int:file_id>', methods=['GET'])
+@jwt_required()
+def get_file(file_id):
+    file = DriveFile.query.get_or_404(file_id)
+    current_user_id = int(get_jwt_identity())
+    _, err = _authorize_workspace(file.workspace_id, current_user_id)
+    if err:
+        return err
+    if file.state == 'deleted':
+        return error_response('File not found', 404)
+    return success_response(file.to_dict())
+
 
 @drive_bp.route('/files/<int:file_id>', methods=['PUT'])
 @jwt_required()
@@ -148,6 +162,7 @@ def update_file_metadata(file_id):
     db.session.commit()
     return success_response(file.to_dict())
 
+
 @drive_bp.route('/files/<int:file_id>', methods=['DELETE'])
 @jwt_required()
 def delete_file(file_id):
@@ -158,4 +173,4 @@ def delete_file(file_id):
         return err
     file.state = 'deleted'
     db.session.commit()
-    return success_response({'message': 'File deleted'}, 200)
+    return success_response({'message': 'File deleted'})

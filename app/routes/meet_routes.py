@@ -45,10 +45,14 @@ def _meeting_or_404(meeting_id):
 
 def _is_participant(meeting, user_id):
     """Return True if user_id is the owner or an invited participant."""
-    if meeting.owner_user_id == user_id:
+    try:
+        uid_int = int(user_id)
+    except (ValueError, TypeError):
+        return False
+    if meeting.owner_user_id == uid_int:
         return True
     return MeetParticipant.query.filter_by(
-        meeting_id=meeting.id, user_id=user_id
+        meeting_id=meeting.id, user_id=uid_int
     ).first() is not None
 
 
@@ -180,7 +184,7 @@ def list_meetings():
 @jwt_required()
 def get_meeting(meeting_id):
     """Full meeting detail including participants and artifacts."""
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -202,7 +206,7 @@ def update_meeting(meeting_id):
     Update meeting details (title, schedule, links, settings).
     Only owner can update. Cannot update a live or ended meeting.
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -249,7 +253,7 @@ def update_meeting(meeting_id):
 @jwt_required()
 def start_meeting(meeting_id):
     """scheduled → live"""
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -276,7 +280,7 @@ def end_meeting(meeting_id):
     After this, call /save-artifact for each output.
     When transcript + summary are saved, status auto-advances to 'indexed'.
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -302,7 +306,7 @@ def end_meeting(meeting_id):
 @jwt_required()
 def cancel_meeting(meeting_id):
     """Cancel a scheduled meeting."""
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -323,7 +327,7 @@ def cancel_meeting(meeting_id):
 @jwt_required()
 def archive_meeting(meeting_id):
     """Move an indexed meeting to archived state."""
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -361,7 +365,7 @@ def invite_participant(meeting_id):
     Body: { "user_id": 5 }  OR  { "guest_email": "x@y.com" }
     Optional: { "role": "member" }  (member | moderator | guest)
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -406,7 +410,7 @@ def invite_participant(meeting_id):
 @jwt_required()
 def remove_participant(meeting_id, participant_id):
     """Remove a participant (owner only)."""
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -429,12 +433,12 @@ def remove_participant(meeting_id, participant_id):
 @jwt_required()
 def join_meeting(meeting_id):
     """Mark the current user as having joined the live meeting."""
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
 
-    if m.status != MeetingStatus.live:
+    if m.status not in (MeetingStatus.live, MeetingStatus.scheduled):
         return jsonify({"error": "Meeting is not live"}), 400
 
     p = MeetParticipant.query.filter_by(meeting_id=m.id, user_id=uid).first()
@@ -452,7 +456,7 @@ def join_meeting(meeting_id):
 @jwt_required()
 def leave_meeting(meeting_id):
     """Mark the current user as having left the meeting."""
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -492,7 +496,7 @@ def save_artifact(meeting_id):
     artifact_type options: recording | transcript | summary | notes |
                            whiteboard | annotation | screenshot
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -572,7 +576,7 @@ def create_decision(meeting_id):
     Optional: rationale, owner_ids, linked_milestone_ids, linked_doc_ids,
               source_timestamp, ai_extracted
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -605,7 +609,7 @@ def create_decision(meeting_id):
 @jwt_required()
 def update_decision(meeting_id, decision_id):
     """Update status or details of a decision."""
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -652,7 +656,7 @@ def create_action_item(meeting_id):
     Optional: description, owner_user_id, due_at (ISO), priority,
               linked_milestone_id, source_timestamp, ai_extracted
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -751,7 +755,7 @@ def create_annotation(meeting_id):
 
     payload example: { "x": 120, "y": 340, "text": "Fix this", "color": "#ff0000" }
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -826,7 +830,7 @@ def pre_meeting_panel(meeting_id):
 
     The frontend uses this to show the preparation panel before the user joins.
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -889,7 +893,7 @@ def trigger_processing(meeting_id):
     In a real production setup, this would fire a Celery/RQ task.
     For now it validates + marks the meeting as ready for indexing.
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -1196,7 +1200,7 @@ def get_audit_log(meeting_id):
     Read-only audit log for a meeting.
     Shows every action taken: who, what, when.
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
     m, err, code = _meeting_or_404(meeting_id)
     if err:
         return err, code
@@ -1223,7 +1227,7 @@ def startup_meetings_overview(startup_id):
     The Meetings tab for a startup workspace.
     Returns: upcoming meetings, recent meetings, open action items.
     """
-    uid = get_jwt_identity()
+    uid = int(get_jwt_identity())
 
     upcoming = (
         MeetMeeting.query
