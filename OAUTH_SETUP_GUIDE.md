@@ -63,7 +63,7 @@ http://127.0.0.1:5000/api/auth/google/callback
 ```
 https://your-domain.com/api/auth/google/callback
 ```
->>>>>>>>
+
 ### 2.4 Get Credentials
 
 After creating the OAuth client:

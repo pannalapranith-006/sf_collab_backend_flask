@@ -74,7 +74,6 @@ def create_user_permission():
     if 'user_id' not in data:
         return error_response('Missing required field: user_id')
     
-    # Accept either single permission_id or a list of permission_ids
     permission_ids = data.get('permission_id') or data.get('permission_ids')
     if not permission_ids:
         return error_response('Missing required field: permission_id or permission_ids')

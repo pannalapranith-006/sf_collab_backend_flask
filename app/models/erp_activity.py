@@ -112,5 +112,3 @@ class ActivityMonitorJobHealth(db.Model):
     consecutive_failures = db.Column(db.Integer, nullable=False, default=0)
     updated_at           = db.Column(db.DateTime, nullable=False,
                                      default=datetime.utcnow, onupdate=datetime.utcnow)
-
-

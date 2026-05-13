@@ -1,6 +1,5 @@
 """
 MarketplaceCategory Model — SF Marketplace
-============================================
 Fixed categories seeded on first run.
 Every category must answer: "Does this help someone build or launch a startup?"
 

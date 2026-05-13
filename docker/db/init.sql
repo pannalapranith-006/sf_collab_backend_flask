@@ -2434,7 +2434,7 @@ CREATE TABLE IF NOT EXISTS visibility_boosts (
 CREATE TABLE IF NOT EXISTS balances (
   id int NOT NULL AUTO_INCREMENT,
   user_id int NOT NULL,
-  vailable int NOT NULL DEFAULT 0,
+  available int NOT NULL DEFAULT 0,
   pending int NOT NULL DEFAULT 0,
   escrow_locked int NOT NULL DEFAULT 0,
   	otal_deposited int NOT NULL DEFAULT 0,
@@ -2454,7 +2454,7 @@ CREATE TABLE IF NOT EXISTS escrow_transactions (
   payee_id int NOT NULL,
   payer_balance_id int NOT NULL,
   payee_balance_id int DEFAULT NULL,
-  mount_cents int NOT NULL,
+  amount_cents int NOT NULL,
   currency varchar(3) NOT NULL DEFAULT 'USD',
   status varchar(30) NOT NULL DEFAULT 'created',
   created_at datetime DEFAULT CURRENT_TIMESTAMP,

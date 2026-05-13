@@ -1,6 +1,5 @@
 """
 MarketplaceListing Model — SF Marketplace
-==========================================
 A digital resource listed for sale by a Seller.
 
 Rules (per SF Economy docs):
