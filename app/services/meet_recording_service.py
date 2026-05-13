@@ -59,9 +59,9 @@ def create_daily_room(meeting_id, recording_enabled=True):
         "name":       room_name,
         "privacy":    "private",   # participants need a token to join
         "properties": {
-            "enable_recording":     "cloud" if recording_enabled else "off",
+            "enable_recording":     recording_enabled,
             "enable_transcription": False,   # we use Whisper instead
-            "max_participants":     50,
+            "max_participants":     10,
             "enable_chat":          True,
             "enable_screenshare":   True,
             "exp":                  int(datetime.utcnow().timestamp()) + 86400,  # 24h expiry
@@ -102,7 +102,7 @@ def create_participant_token(room_name, user_id, user_name, is_owner=False):
             "user_id":     str(user_id),
             "user_name":   user_name,
             "is_owner":    is_owner,
-            "enable_recording": is_owner,   # only host can start/stop recording
+            # "enable_recording" is not a valid property for a meeting token
             "exp": int(datetime.utcnow().timestamp()) + 86400,
         }
     }

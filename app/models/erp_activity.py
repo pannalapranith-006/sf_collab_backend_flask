@@ -112,29 +112,3 @@ class ActivityMonitorJobHealth(db.Model):
     consecutive_failures = db.Column(db.Integer, nullable=False, default=0)
     updated_at           = db.Column(db.DateTime, nullable=False,
                                      default=datetime.utcnow, onupdate=datetime.utcnow)
-
-
-class AnalyticsSnapshot(db.Model):
-    __tablename__ = 'analytics_snapshots'
-
-    id                   = db.Column(db.Integer, primary_key=True)
-    workspace_id         = db.Column(db.Integer, nullable=False, index=True)
-    date_range           = db.Column(db.String(20))
-    period_start         = db.Column(db.Date, nullable=False)
-    period_end           = db.Column(db.Date, nullable=False)
-    attendance_rate      = db.Column(db.Float, default=0.0)
-    task_completion_rate = db.Column(db.Float, default=0.0)
-    update_consistency   = db.Column(db.Float, default=0.0)
-    active_users_daily   = db.Column(db.Integer, default=0)
-    active_users_weekly  = db.Column(db.Integer, default=0)
-    total_users          = db.Column(db.Integer, default=0)
-    overdue_tasks        = db.Column(db.Integer, default=0)
-    created_at           = db.Column(db.DateTime, default=datetime.utcnow)
-
-    __table_args__ = (
-        db.UniqueConstraint('workspace_id', 'date_range', 'period_start',
-                            name='uq_snapshot_period'),
-    )
-
-    def to_dict(self):
-        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}

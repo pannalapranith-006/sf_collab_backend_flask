@@ -53,7 +53,8 @@ def _is_participant(meeting, user_id):
 
 
 def _require_owner(meeting, user_id):
-    if meeting.owner_user_id != user_id:
+    # Convert both to string or int for safe comparison
+    if str(meeting.owner_user_id) != str(user_id):
         return jsonify({"error": "Only the meeting owner can do this"}), 403
     return None
 

@@ -77,7 +77,7 @@ from .routes import (
 
 # ── ERP Module ────────────────────────────────────────────────────────────────
 from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
-from .routes.analytics_routes import analytics_bp
+#from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
 
 # ── SF Meet ───────────────────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ blueprints = [
     {"blueprint": attendance_bp, "url_prefix": "/api/attendance"},
     {"blueprint": alerts_bp, "url_prefix": "/api/erp-alerts"},
     {"blueprint": daily_updates_bp, "url_prefix": "/api/daily-updates"},
-    {"blueprint": analytics_bp, "url_prefix": "/analytics"},
+    #{"blueprint": analytics_bp, "url_prefix": "/analytics"},
     {"blueprint": activity_monitor_bp, "url_prefix": "/api/activity"},
     # SF Drive main
     {"blueprint": drive_bp, "url_prefix": "/api/drive"},
@@ -174,4 +174,9 @@ blueprints = [
     {"blueprint": milestone_drive_bp, "url_prefix": "/api/milestones"},
     # Meeting routes
     {"blueprint": meet_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_milestone_routes.meet_milestone_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_file_routes.meet_files_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_recording_routes.meet_recording_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_guest_routes.meet_guest_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_workspace_memory.meet_memory_bp, "url_prefix": "/api/meet"},
 ]
