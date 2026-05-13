@@ -6,7 +6,6 @@ from app.routes import auth_routes
 from .config import get_config
 import os
 from datetime import timedelta
-import logging
 import warnings
 import hmac
 import hashlib
@@ -21,12 +20,11 @@ import stripe
 
 WEBHOOK_SECRET = b'sFcollab_2025_secretKey!'
 
-# Suppress warnings first
 warnings.filterwarnings("ignore")
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
+BASE_DIR           = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+UPLOAD_FOLDER      = os.path.join(BASE_DIR, 'uploads')
 AVATAR_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'chat_avatars')
 
 
@@ -81,10 +79,7 @@ SCHEMA_MIGRATIONS = [
 
 
 def _run_startup_migrations(app):
-    """
-    Run on every Flask startup inside app context.
-    Adds missing columns without touching existing data.
-    """
+    """Run on every Flask startup. Adds missing columns without touching existing data."""
     from sqlalchemy import text, inspect as sa_inspect
 
     with app.app_context():
@@ -144,12 +139,12 @@ def create_app(config_name=None):
         app.config["JWT_COOKIE_SECURE"] = True
         app.config["JWT_COOKIE_SAMESITE"] = "None"
         app.config["JWT_COOKIE_CSRF_PROTECT"] = True
-        app.config["JWT_COOKIE_DOMAIN"] = ".sfcollab.com"
+        app.config["JWT_COOKIE_DOMAIN"]       = ".sfcollab.com"
     else:
         app.config["JWT_COOKIE_SECURE"] = False
         app.config["JWT_COOKIE_SAMESITE"] = "Lax"
         app.config["JWT_COOKIE_CSRF_PROTECT"] = False
-        app.config["JWT_COOKIE_DOMAIN"] = None
+        app.config["JWT_COOKIE_DOMAIN"]       = None
 
     # Session configuration
     app.config['SESSION_PERMANENT'] = True
@@ -160,10 +155,10 @@ def create_app(config_name=None):
 
     if is_production:
         app.config["SESSION_COOKIE_SAMESITE"] = "None"
-        app.config["SESSION_COOKIE_SECURE"] = True
+        app.config["SESSION_COOKIE_SECURE"]   = True
     else:
         app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-        app.config["SESSION_COOKIE_SECURE"] = False
+        app.config["SESSION_COOKIE_SECURE"]   = False
 
     app.config.setdefault("GITHUB_CLIENT_ID", os.getenv("GITHUB_CLIENT_ID"))
     app.config.setdefault("GITHUB_CLIENT_SECRET", os.getenv("GITHUB_CLIENT_SECRET"))
@@ -190,9 +185,9 @@ def create_app(config_name=None):
     app.config['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY', '')
     app.config['GROQ_API_KEY'] = os.getenv('GROQ_API_KEY', '')
     app.config['HUGGINGFACE_API_KEY'] = os.getenv('HUGGINGFACE_API_KEY', '')
-    app.config['CORS_ORIGINS'] = Config.CORS_ORIGINS
-    app.config['HF_PROXY_URL'] = os.getenv("HF_PROXY_URL")
-    app.config['HF_PROXY_KEY'] = os.getenv("HF_PROXY_KEY")
+    app.config['CORS_ORIGINS']        = Config.CORS_ORIGINS
+    app.config['HF_PROXY_URL']        = os.getenv("HF_PROXY_URL")
+    app.config['HF_PROXY_KEY']        = os.getenv("HF_PROXY_KEY")
 
     # Stripe
     stripe.api_key = os.getenv('STRIPE_SECRET_KEY', '')
@@ -249,16 +244,6 @@ def create_app(config_name=None):
                 response_preview = "<non-json response>"
 
             print(f"""
-================= API REQUEST =================
-{method} {path}
-Status: {status}  Duration: {duration}s
-Client IP: {ip}  Origin: {origin}
-Auth Header: {has_auth}  Cookie: {has_cookie}  Size: {content_length}b
-Response: {response_preview}
-=============================================
-""")
-        return response
-
     @app.before_request
     def start_request_timer():
         g.start_time = time.time()
@@ -280,7 +265,7 @@ Response: {response_preview}
         app.config["SESSION_FILE_DIR"] = os.path.join(BASE_DIR, "flask_session")
         os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
     if app.config.get("SESSION_TYPE") == "sqlalchemy":
-        app.config["SESSION_SQLALCHEMY"] = db
+        app.config["SESSION_SQLALCHEMY"]       = db
         app.config["SESSION_SQLALCHEMY_TABLE"] = "sessions"
 
     _sess = Session()

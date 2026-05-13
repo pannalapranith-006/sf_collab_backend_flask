@@ -148,13 +148,13 @@ def admin_required(fn):
 def _get_user_workspace(user_id: int) -> int | None:
     """
     Workspace is not stored on User — look it up from their latest activity record.
-    Returns None if user has never been assigned to a workspace.
+    Falls back to user_id itself as the workspace scope if no record exists.
     """
     record = (UserActivity.query
               .filter_by(user_id=user_id)
               .order_by(UserActivity.last_activity.desc())
               .first())
-    return record.workspace_id if record else None
+    return record.workspace_id if record else user_id  # default to user_id
 
 
 def _should_track():
@@ -344,8 +344,7 @@ def heartbeat():
 
     user_id      = _uid()
     workspace_id = _get_user_workspace(user_id)
-    if not workspace_id:
-        return jsonify({'error': 'User has no workspace assigned yet'}), 400
+    # workspace_id now always resolves (defaults to user_id)
 
     activity = UserActivity.get_or_create(user_id, workspace_id)
     now      = datetime.utcnow()

@@ -27,8 +27,8 @@ from app.extensions import db
 from app.models.user import User
 from app.models.Enums import UserStatus
 from app.models.attendance import Attendance
+from app.models.analytics import AnalyticsSnapshot
 from app.models.erp_support import DailyUpdate, Holiday
-from app.models.erp_activity import AnalyticsSnapshot, UserActivity
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +45,12 @@ def _uid() -> int:
 
 def _parse_workspace_id():
     raw = request.args.get('workspace_id')
+    # If not provided, fall back to the authenticated user's own ID
     if not raw:
-        return None, (jsonify({'error': 'workspace_id is required'}), 400)
+        try:
+            return int(get_jwt_identity()), None
+        except Exception:
+            return None, (jsonify({'error': 'workspace_id is required and could not be inferred'}), 400)
     try:
         return int(raw), None
     except (ValueError, TypeError):
@@ -556,3 +560,4 @@ def run_nightly_snapshot():
                     AnalyticsService.save_snapshot(wid, period)
                 except Exception as exc:
                     logger.error(f'[Analytics][ERR] workspace={wid} period={period} → {exc}')
+

@@ -43,7 +43,7 @@ def get_activities():
     return success_response({
         'activities': [a.to_dict() for a in result['items']],
         'pagination': {
-            'page': result['page'],
+            'page':     result['page'],
             'per_page': result['per_page'],
             'total': result['total'],
             'pages': result['pages'],
@@ -94,10 +94,9 @@ def get_my_activities():
     return success_response({
         'activities': [a.to_dict() for a in result['items']],
         'pagination': {
-            'page': result['page'],
+            'page':     result['page'],
             'per_page': result['per_page'],
             'total': result['total'],
-            'pages': result['pages'],
         }
     })
 

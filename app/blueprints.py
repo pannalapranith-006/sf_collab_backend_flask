@@ -56,6 +56,9 @@ from .routes import (
     pitch_deck_routes,
     wallet_routes,
     store_routes,
+    # ai_news_routes,  # disabled — requires: pip install feedparser
+    matchmaking_routes,
+    collaboration_routes,
     marketplace_routes,
     readiness_routes,
     balance_routes,
@@ -79,6 +82,7 @@ from .routes import (
 from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
 #from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
+from .routes.erpDocument_routes import documents_bp
 
 # ── SF Meet ───────────────────────────────────────────────────────────────────
 from .routes.meet_routes import meet_bp
