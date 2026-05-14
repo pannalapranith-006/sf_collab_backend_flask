@@ -41,13 +41,19 @@ class BuilderProfile(db.Model):
     # Preferences
     preferred_work_type = db.Column(JSON, default=[])  # ["hourly", "project", "equity"]
     industries_interested = db.Column(JSON, default=[])  # Interested startup industries
-    
+
+    # Matchmaking fields
+    skill_tags = db.Column(JSON, default=[])  # JSON list of skill strings for matchmaking
+    sector_interests = db.Column(JSON, default=[])  # Sector interests for matchmaking
+    execution_score = db.Column(db.Integer, default=50)  # 0-100 execution reputation score
+    availability = db.Column(db.String(50), default="AVAILABLE")  # AVAILABLE, OPEN, NOT_AVAILABLE
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    user = db.relationship('User', backref='builder_profile', uselist=False)
+    user = db.relationship('User', back_populates='builder_profile', uselist=False)
     skills = db.relationship('BuilderSkill', backref='profile', lazy=True, cascade='all, delete-orphan')
     portfolio_items = db.relationship('BuilderPortfolio', backref='profile', lazy=True, cascade='all, delete-orphan')
     applications = db.relationship('BuilderApplication', backref='profile', lazy=True, cascade='all, delete-orphan')

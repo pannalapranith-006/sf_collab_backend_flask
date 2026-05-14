@@ -35,6 +35,10 @@ from app.models.user import User
 from app.models.marketplace_seller import Seller
 from app.models.marketplace_category import MarketplaceCategory
 from app.models.marketplace_listing import MarketplaceListing, ALLOWED_PRODUCT_EXTENSIONS
+from app.models.marketplace_purchase import MarketplacePurchase
+from app.models.Balance import Balance, BalanceTransaction
+from app.models.Crystal import CrystalWallet, CRYSTAL_SPEND_TYPES
+from app.notifications.service import notification_service
 from sqlalchemy import desc, or_
 
 marketplace_bp = Blueprint('marketplace', __name__)
@@ -708,6 +712,20 @@ def admin_reject_listing(listing_id):
         reason = data.get('reason', 'Does not meet marketplace content guidelines')
         listing.reject(reason)
 
+        # Notify the seller
+        if listing.seller:
+            notification_service.create_notification(
+                user_id=listing.seller.user_id,
+                template_key='MARKETPLACE_LISTING_REJECTED',
+                entity_type='marketplace_listing',
+                entity_id=listing_id,
+                variables={
+                    'listing_title': listing.title,
+                    'reason': reason,
+                },
+                link_url='/marketplace',
+            )
+
         return jsonify({'success': True, 'listing': listing.to_dict()}), 200
 
     except Exception as e:
@@ -747,8 +765,533 @@ def admin_verify_seller(seller_id):
 
 
 # ------------------------------------------------------------------
-# FILE SERVING — serve marketplace files at /uploads/marketplace/*
-# Registered in app/__init__.py via the existing uploaded_file route
-# which already serves /uploads/<path:filename>
-# No extra route needed here.
+# PURCHASE ENDPOINT
 # ------------------------------------------------------------------
+
+@marketplace_bp.route('/listings/<int:listing_id>/purchase', methods=['POST'])
+@jwt_required()
+def purchase_listing(listing_id):
+    """
+    Purchase a marketplace listing using real Balance (not Crystals).
+
+    Flow:
+      1. Validate listing is published and buyer has enough Balance
+      2. Check buyer hasn't already purchased this listing
+      3. Debit buyer's Balance (full price)
+      4. Credit seller's Balance (90%)
+      5. Record platform fee (10%) — stays in platform
+      6. Create MarketplacePurchase record
+      7. Increment listing download count
+      8. Record seller delivery
+    """
+    try:
+        buyer_id = int(get_jwt_identity())
+
+        listing = MarketplaceListing.query.get(listing_id)
+        if not listing:
+            return jsonify({'success': False, 'error': 'Listing not found'}), 404
+        if listing.status != 'published' or not listing.is_active:
+            return jsonify({'success': False, 'error': 'Listing is not available'}), 400
+
+        # Cannot buy your own listing
+        seller = Seller.query.get(listing.seller_id)
+        if seller and seller.user_id == buyer_id:
+            return jsonify({'success': False, 'error': 'Cannot purchase your own listing'}), 400
+
+        # Idempotency — prevent double purchase
+        existing = MarketplacePurchase.query.filter_by(
+            buyer_id=buyer_id,
+            listing_id=listing_id,
+            status='completed'
+        ).first()
+        if existing:
+            return jsonify({
+                'success': True,
+                'already_purchased': True,
+                'purchase': existing.to_dict(),
+                'download_url': listing.file_url,
+                'message': 'You already own this resource'
+            }), 200
+
+        # Digital products have unlimited stock — no stock check needed
+
+        # Get or create buyer Balance
+        buyer_balance = Balance.query.filter_by(user_id=buyer_id).first()
+        if not buyer_balance:
+            buyer_balance = Balance(user_id=buyer_id)
+            db.session.add(buyer_balance)
+            db.session.flush()
+
+        price_cents    = listing.price_cents
+        fee_cents      = listing.platform_fee_cents    # 10%
+        seller_cents   = listing.seller_receives_cents  # 90%
+
+        # Check buyer has enough
+        if buyer_balance.available < price_cents:
+            return jsonify({
+                'success': False,
+                'error': 'Insufficient Balance',
+                'available': buyer_balance.available / 100,
+                'required': price_cents / 100,
+                'shortfall': (price_cents - buyer_balance.available) / 100,
+            }), 400
+
+        # --- Debit buyer ---
+        buyer_tx = buyer_balance.pay(
+            cents=price_cents,
+            reference_type='marketplace_purchase',
+            reference_id=str(listing_id),
+            description=f'Purchase: {listing.title}'
+        )
+
+        # --- Credit seller (90%) ---
+        seller_balance = Balance.query.filter_by(user_id=seller.user_id).first()
+        if not seller_balance:
+            seller_balance = Balance(user_id=seller.user_id)
+            db.session.add(seller_balance)
+            db.session.flush()
+
+        seller_tx = seller_balance.receive(
+            cents=seller_cents,
+            reference_type='marketplace_sale',
+            reference_id=str(listing_id),
+            description=f'Sale: {listing.title}'
+        )
+
+        # Update seller counters
+        seller.total_earned_cents   += seller_cents
+        seller.pending_payout_cents += seller_cents
+        seller.record_delivery()
+
+        listing.increment_downloads()
+
+        # Create purchase record
+        purchase = MarketplacePurchase(
+            buyer_id=buyer_id,
+            seller_id=seller.id,
+            listing_id=listing_id,
+            price_cents=price_cents,
+            platform_fee_cents=fee_cents,
+            seller_cut_cents=seller_cents,
+            buyer_tx_id=buyer_tx.id if buyer_tx else None,
+            seller_tx_id=seller_tx.id if seller_tx else None,
+            status='completed',
+        )
+        db.session.add(purchase)
+        db.session.commit()
+
+        # ── Notify seller of new sale ──────────────────────────────
+        buyer = User.query.get(buyer_id)
+        buyer_name = f"{buyer.first_name} {buyer.last_name}" if buyer else 'Someone'
+
+        notification_service.create_notification(
+            user_id=seller.user_id,
+            template_key='MARKETPLACE_NEW_PURCHASE',
+            actor_id=buyer_id,
+            entity_type='marketplace_listing',
+            entity_id=listing_id,
+            variables={
+                'buyer_name': buyer_name,
+                'listing_title': listing.title,
+                'amount': f"{price_cents / 100:.2f}",
+            },
+            link_url='/marketplace',
+        )
+
+        # ── Notify buyer of successful purchase ────────────────────
+        notification_service.create_notification(
+            user_id=buyer_id,
+            template_key='MARKETPLACE_PURCHASE_CONFIRMED',
+            actor_id=seller.user_id,
+            entity_type='marketplace_listing',
+            entity_id=listing_id,
+            variables={'listing_title': listing.title},
+            link_url='/marketplace',
+        )
+
+        return jsonify({
+            'success': True,
+            'purchase': purchase.to_dict(),
+            'download_url': listing.file_url,
+            'buyer_balance': buyer_balance.to_dict(),
+            'message': f'Successfully purchased "{listing.title}"'
+        }), 201
+
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@marketplace_bp.route('/listings/<int:listing_id>/download', methods=['GET'])
+@jwt_required()
+def download_listing(listing_id):
+    """
+    Get the download URL for a purchased listing.
+    Only buyers who have completed a purchase can access this.
+    """
+    try:
+        buyer_id = int(get_jwt_identity())
+
+        purchase = MarketplacePurchase.query.filter_by(
+            buyer_id=buyer_id,
+            listing_id=listing_id,
+            status='completed'
+        ).first()
+
+        if not purchase:
+            return jsonify({
+                'success': False,
+                'error': 'You have not purchased this listing'
+            }), 403
+
+        listing = MarketplaceListing.query.get(listing_id)
+        if not listing or not listing.file_url:
+            return jsonify({'success': False, 'error': 'File not available'}), 404
+
+        return jsonify({
+            'success': True,
+            'download_url': listing.file_url,
+            'file_name': listing.file_name,
+            'file_size': listing.file_size_bytes,
+        }), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@marketplace_bp.route('/my-purchases', methods=['GET'])
+@jwt_required()
+def get_my_purchases():
+    """Get all listings the current user has purchased."""
+    try:
+        buyer_id = int(get_jwt_identity())
+        purchases = MarketplacePurchase.query.filter_by(
+            buyer_id=buyer_id, status='completed'
+        ).order_by(desc(MarketplacePurchase.purchased_at)).all()
+
+        return jsonify({
+            'success': True,
+            'purchases': [p.to_dict() for p in purchases]
+        }), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ------------------------------------------------------------------
+# RATING ENDPOINT
+# ------------------------------------------------------------------
+
+@marketplace_bp.route('/purchases/<int:purchase_id>/rate', methods=['POST'])
+@jwt_required()
+def rate_purchase(purchase_id):
+    """
+    Buyer rates a listing after purchase.
+    One rating per purchase. Score must be 1–5.
+
+    Body:
+      rating      (float) — 1.0 to 5.0
+      review_text (str, optional)
+    """
+    try:
+        buyer_id = int(get_jwt_identity())
+        data     = request.get_json() or {}
+
+        purchase = MarketplacePurchase.query.get(purchase_id)
+        if not purchase:
+            return jsonify({'success': False, 'error': 'Purchase not found'}), 404
+        if purchase.buyer_id != buyer_id:
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        if purchase.status != 'completed':
+            return jsonify({'success': False, 'error': 'Can only rate completed purchases'}), 400
+        if purchase.rating is not None:
+            return jsonify({'success': False, 'error': 'You have already rated this purchase'}), 400
+
+        score = data.get('rating')
+        if score is None:
+            return jsonify({'success': False, 'error': 'rating is required'}), 400
+
+        try:
+            score = float(score)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'rating must be a number'}), 400
+
+        if not 1 <= score <= 5:
+            return jsonify({'success': False, 'error': 'rating must be between 1 and 5'}), 400
+
+        # Save rating on purchase
+        purchase.rating      = score
+        purchase.review_text = data.get('review_text', '').strip() or None
+        purchase.rated_at    = datetime.utcnow()
+
+        # Update listing average rating
+        listing = MarketplaceListing.query.get(purchase.listing_id)
+        if listing:
+            listing.add_rating(score)
+
+        db.session.commit()
+
+        # ── Notify seller of new rating ────────────────────────────
+        if listing and listing.seller:
+            buyer = User.query.get(buyer_id)
+            notification_service.create_notification(
+                user_id=listing.seller.user_id,
+                template_key='MARKETPLACE_LISTING_RATED',
+                actor_id=buyer_id,
+                entity_type='marketplace_listing',
+                entity_id=listing.id,
+                variables={
+                    'buyer_name': f"{buyer.first_name} {buyer.last_name}" if buyer else 'A buyer',
+                    'listing_title': listing.title,
+                    'rating': score,
+                },
+                link_url='/marketplace',
+            )
+
+        return jsonify({
+            'success': True,
+            'purchase': purchase.to_dict(),
+            'listing_rating': listing.rating if listing else None,
+        }), 200
+
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ------------------------------------------------------------------
+# SELLER PAYOUT ENDPOINT
+# ------------------------------------------------------------------
+
+@marketplace_bp.route('/seller/payout', methods=['POST'])
+@jwt_required()
+def request_seller_payout():
+    """
+    Seller requests a payout of their pending earnings to their Balance wallet.
+
+    The pending_payout_cents on the Seller model tracks money owed to the seller.
+    This endpoint moves it from pending_payout → seller's available Balance.
+
+    In production this would trigger a Stripe Connect payout to their bank.
+    For now it immediately credits their Balance wallet.
+    """
+    try:
+        user_id = int(get_jwt_identity())
+
+        seller = Seller.query.filter_by(user_id=user_id).first()
+        if not seller:
+            return jsonify({'success': False, 'error': 'Not registered as a seller'}), 404
+
+        if seller.pending_payout_cents <= 0:
+            return jsonify({'success': False, 'error': 'No pending earnings to pay out'}), 400
+
+        # Minimum payout $5
+        if seller.pending_payout_cents < 500:
+            return jsonify({
+                'success': False,
+                'error': f'Minimum payout is $5.00. Current pending: ${seller.pending_payout_cents / 100:.2f}'
+            }), 400
+
+        amount_cents = seller.pending_payout_cents
+
+        # Credit seller's Balance
+        balance = Balance.query.filter_by(user_id=user_id).first()
+        if not balance:
+            balance = Balance(user_id=user_id)
+            db.session.add(balance)
+            db.session.flush()
+
+        balance.receive(
+            cents=amount_cents,
+            reference_type='seller_payout',
+            description=f'Marketplace payout — ${amount_cents / 100:.2f}'
+        )
+
+        # Clear pending
+        seller.pending_payout_cents = 0
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'paid_out': amount_cents / 100,
+            'balance': balance.to_dict(),
+            'seller': seller.to_dict(),
+            'message': f'${amount_cents / 100:.2f} paid to your Balance wallet'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@marketplace_bp.route('/seller/earnings', methods=['GET'])
+@jwt_required()
+def get_seller_earnings():
+    """Get seller's earnings summary and recent sales."""
+    try:
+        user_id = int(get_jwt_identity())
+
+        seller = Seller.query.filter_by(user_id=user_id).first()
+        if not seller:
+            return jsonify({'success': False, 'error': 'Not registered as a seller'}), 404
+
+        # Recent sales
+        recent_sales = MarketplacePurchase.query.filter_by(
+            seller_id=seller.id, status='completed'
+        ).order_by(desc(MarketplacePurchase.purchased_at)).limit(20).all()
+
+        # Sales by listing
+        from sqlalchemy import func
+        sales_by_listing = db.session.query(
+            MarketplacePurchase.listing_id,
+            func.count(MarketplacePurchase.id).label('count'),
+            func.sum(MarketplacePurchase.seller_cut_cents).label('total_cents')
+        ).filter_by(seller_id=seller.id, status='completed')\
+         .group_by(MarketplacePurchase.listing_id).all()
+
+        return jsonify({
+            'success': True,
+            'earnings': {
+                'total_earned': seller.total_earned_cents / 100,
+                'pending_payout': seller.pending_payout_cents / 100,
+                'sales_count': len(recent_sales),
+            },
+            'recent_sales': [s.to_dict() for s in recent_sales],
+            'sales_by_listing': [
+                {
+                    'listing_id': str(r.listing_id),
+                    'count': r.count,
+                    'total_earned': r.total_cents / 100,
+                }
+                for r in sales_by_listing
+            ]
+        }), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ------------------------------------------------------------------
+# CRYSTAL BOOST ENDPOINT
+# ------------------------------------------------------------------
+
+# Crystal cost per 24h boost unit for marketplace listings
+LISTING_BOOST_COST = 100   # 100 crystals / 24h per SF Economy docs
+
+@marketplace_bp.route('/listings/<int:listing_id>/boost', methods=['POST'])
+@jwt_required()
+def boost_listing(listing_id):
+    """
+    Boost a marketplace listing's visibility using Crystals.
+
+    RULE: Crystals are NOT money. They only accelerate discovery.
+          They CANNOT be used to pay for listings or reduce prices.
+
+    Body:
+      duration_units (int, optional) — number of 24h blocks (default: 1)
+
+    Cost: 100 crystals per 24h block.
+    Effect: listing floats to top of discovery feed while boost is active.
+    """
+    try:
+        user_id = int(get_jwt_identity())
+        data    = request.get_json() or {}
+
+        listing = MarketplaceListing.query.get(listing_id)
+        if not listing:
+            return jsonify({'success': False, 'error': 'Listing not found'}), 404
+
+        # Only seller can boost their own listing
+        seller = Seller.query.filter_by(user_id=user_id).first()
+        if not seller or listing.seller_id != seller.id:
+            return jsonify({'success': False, 'error': 'Only the seller can boost this listing'}), 403
+
+        if listing.status != 'published':
+            return jsonify({'success': False, 'error': 'Only published listings can be boosted'}), 400
+
+        duration_units = max(1, int(data.get('duration_units', 1)))
+        total_cost     = LISTING_BOOST_COST * duration_units
+
+        # Get or create crystal wallet
+        crystal_wallet = CrystalWallet.query.filter_by(user_id=user_id).first()
+        if not crystal_wallet:
+            crystal_wallet = CrystalWallet(user_id=user_id)
+            db.session.add(crystal_wallet)
+            db.session.flush()
+
+        if crystal_wallet.balance < total_cost:
+            return jsonify({
+                'success': False,
+                'error': 'Insufficient crystals',
+                'balance': crystal_wallet.balance,
+                'required': total_cost,
+                'shortfall': total_cost - crystal_wallet.balance,
+            }), 400
+
+        # Spend crystals
+        crystal_wallet.spend_crystals(
+            amount=total_cost,
+            usage_type='listing_promotion',
+            description=f'Boost listing: {listing.title} ({duration_units}×24h)',
+            reference_id=str(listing_id),
+        )
+
+        # Apply boost to listing
+        from datetime import timedelta
+        now        = datetime.utcnow()
+        # If already boosted, extend from current expiry
+        if listing.is_boost_active() and listing.boost_expires_at:
+            new_expiry = listing.boost_expires_at + timedelta(hours=24 * duration_units)
+        else:
+            new_expiry = now + timedelta(hours=24 * duration_units)
+
+        listing.is_boosted       = True
+        listing.boost_expires_at = new_expiry
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'boost': {
+                'listing_id': str(listing_id),
+                'crystals_spent': total_cost,
+                'duration_hours': 24 * duration_units,
+                'expires_at': new_expiry.isoformat(),
+                'is_active': True,
+            },
+            'crystal_wallet': crystal_wallet.to_dict(),
+            'message': f'Listing boosted for {duration_units * 24} hours!'
+        }), 200
+
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@marketplace_bp.route('/listings/<int:listing_id>/boost', methods=['GET'])
+@jwt_required()
+def get_boost_status(listing_id):
+    """Check the current boost status of a listing."""
+    try:
+        listing = MarketplaceListing.query.get(listing_id)
+        if not listing:
+            return jsonify({'success': False, 'error': 'Listing not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'is_boosted': listing.is_boost_active(),
+            'expires_at': listing.boost_expires_at.isoformat() if listing.boost_expires_at else None,
+            'cost_per_24h': LISTING_BOOST_COST,
+        }), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

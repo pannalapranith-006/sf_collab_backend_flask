@@ -1,5 +1,4 @@
 from datetime import datetime, time
-
 from app.extensions import db
 
 
@@ -28,7 +27,6 @@ class Attendance(db.Model):
         if not self.clock_in_time:
             self.status = 'absent'
             return
-
         cutoff = time(late_threshold_hour, late_threshold_minute)
         self.status = 'late' if self.clock_in_time.time() > cutoff else 'present'
 
