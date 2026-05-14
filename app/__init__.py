@@ -16,15 +16,14 @@ import json
 from app.services.email_service import EmailService
 from flask_session import Session
 import stripe
-# from app.services.ai_news.scheduler import start_scheduler
 
 WEBHOOK_SECRET = b'sFcollab_2025_secretKey!'
 
 warnings.filterwarnings("ignore")
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
-BASE_DIR           = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-UPLOAD_FOLDER      = os.path.join(BASE_DIR, 'uploads')
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 AVATAR_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'chat_avatars')
 
 
@@ -139,12 +138,12 @@ def create_app(config_name=None):
         app.config["JWT_COOKIE_SECURE"] = True
         app.config["JWT_COOKIE_SAMESITE"] = "None"
         app.config["JWT_COOKIE_CSRF_PROTECT"] = True
-        app.config["JWT_COOKIE_DOMAIN"]       = ".sfcollab.com"
+        app.config["JWT_COOKIE_DOMAIN"] = ".sfcollab.com"
     else:
         app.config["JWT_COOKIE_SECURE"] = False
         app.config["JWT_COOKIE_SAMESITE"] = "Lax"
         app.config["JWT_COOKIE_CSRF_PROTECT"] = False
-        app.config["JWT_COOKIE_DOMAIN"]       = None
+        app.config["JWT_COOKIE_DOMAIN"] = None
 
     # Session configuration
     app.config['SESSION_PERMANENT'] = True
@@ -155,10 +154,10 @@ def create_app(config_name=None):
 
     if is_production:
         app.config["SESSION_COOKIE_SAMESITE"] = "None"
-        app.config["SESSION_COOKIE_SECURE"]   = True
+        app.config["SESSION_COOKIE_SECURE"] = True
     else:
         app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-        app.config["SESSION_COOKIE_SECURE"]   = False
+        app.config["SESSION_COOKIE_SECURE"] = False
 
     app.config.setdefault("GITHUB_CLIENT_ID", os.getenv("GITHUB_CLIENT_ID"))
     app.config.setdefault("GITHUB_CLIENT_SECRET", os.getenv("GITHUB_CLIENT_SECRET"))
@@ -185,9 +184,9 @@ def create_app(config_name=None):
     app.config['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY', '')
     app.config['GROQ_API_KEY'] = os.getenv('GROQ_API_KEY', '')
     app.config['HUGGINGFACE_API_KEY'] = os.getenv('HUGGINGFACE_API_KEY', '')
-    app.config['CORS_ORIGINS']        = Config.CORS_ORIGINS
-    app.config['HF_PROXY_URL']        = os.getenv("HF_PROXY_URL")
-    app.config['HF_PROXY_KEY']        = os.getenv("HF_PROXY_KEY")
+    app.config['CORS_ORIGINS'] = Config.CORS_ORIGINS
+    app.config['HF_PROXY_URL'] = os.getenv("HF_PROXY_URL")
+    app.config['HF_PROXY_KEY'] = os.getenv("HF_PROXY_KEY")
 
     # Stripe
     stripe.api_key = os.getenv('STRIPE_SECRET_KEY', '')
@@ -210,7 +209,12 @@ def create_app(config_name=None):
          allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
          methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 
-    # ─── Combined after_request: CORS headers + logging ─────────────────────
+    # ─── Before request: start timer ─────────────────────────────────────────
+    @app.before_request
+    def start_request_timer():
+        g.start_time = time.time()
+
+    # ─── After request: CORS headers + logging ──────────────────────────────
     @app.after_request
     def after_request_handler(response):
         # CORS headers (dynamic origin check)
@@ -243,10 +247,12 @@ def create_app(config_name=None):
             else:
                 response_preview = "<non-json response>"
 
-            print(f"""
-    @app.before_request
-    def start_request_timer():
-        g.start_time = time.time()
+            # Clean, working log message
+            print(f"[REQUEST] {method} {path} → {status} ({duration}s) | IP: {ip} | "
+                  f"Origin: {origin} | Auth: {has_auth} | Cookie: {has_cookie} | "
+                  f"Length: {content_length} | Preview: {response_preview}")
+
+        return response
 
     # OPTIONS handler for preflight
     @app.route('/<path:path>', methods=['OPTIONS'])
@@ -265,7 +271,7 @@ def create_app(config_name=None):
         app.config["SESSION_FILE_DIR"] = os.path.join(BASE_DIR, "flask_session")
         os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
     if app.config.get("SESSION_TYPE") == "sqlalchemy":
-        app.config["SESSION_SQLALCHEMY"]       = db
+        app.config["SESSION_SQLALCHEMY"] = db
         app.config["SESSION_SQLALCHEMY_TABLE"] = "sessions"
 
     _sess = Session()
