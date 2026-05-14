@@ -1,6 +1,5 @@
 """
 Activation Routes — SF Collab
-================================
 Handles the Vision → Startup activation flow and Startup → Vision demotion.
 
 Blueprint mounted at /api/activation

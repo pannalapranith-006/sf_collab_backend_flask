@@ -1,5 +1,3 @@
-from app.routes import milestone_file_routes
-
 from .routes import (
     main_routes,
     auth_routes,
@@ -71,37 +69,23 @@ from .routes import (
     drive_file_relation_routes,
     drive_meetings_routes,
     drive_audit_routes,
+    activation_routes,
+    mentorship_routes,
+    meet_file_routes,
+    meet_recording_routes,
+    meet_guest_routes,
+    meet_milestone_routes,
+    meet_workspace_memory,
 )
 
 # ── ERP Module ────────────────────────────────────────────────────────────────
 from .routes.erp_routes import attendance_bp, alerts_bp, daily_updates_bp
-from .routes.analytics_routes import analytics_bp
+#from .routes.analytics_routes import analytics_bp
 from .routes.activity_monitor_routes import activity_monitor_bp
 from .routes.erpDocument_routes import documents_bp
 
-# ── SF Drive Module ───────────────────────────────────────────────────────────
-# FIX: drive route modules (drive_files_routes, drive_file_relation_routes, etc.)
-# import DriveFile from app.models.drive_file at module load time. If they are
-# included in the `from .routes import (...)` tuple above, Python loads them
-# before app/models/__init__.py has finished executing, causing SQLAlchemy to
-# see the DriveFile class / 'drive_files' table registered twice and crash with:
-#   "Table 'drive_files' is already defined for this MetaData instance"
-#
-# Importing them here (after the main .routes tuple) is safe because by this
-# point the models package is already cached by Python's import system.
-from .routes.drive_routes import drive_bp
-
-try:
-    from app.routes import (
-        drive_files_routes,
-        drive_file_relation_routes,
-        drive_meetings_routes,
-        drive_audit_routes,
-    )
-    _drive_routes_available = True
-except ImportError as e:
-    print(f"⚠  SF Drive routes not available: {e}")
-    _drive_routes_available = False
+# ── SF Meet ───────────────────────────────────────────────────────────────────
+from .routes.meet_routes import meet_bp
 
 #  SF Drive Module
 from .routes.drive_routes import drive_bp
@@ -111,6 +95,8 @@ from app.routes.drive_meetings_routes import drive_meetings_bp
 from app.routes.drive_audit_routes import drive_audit_bp
 from app.routes.drive_permission_routes import drive_permission_bp
 from app.routes.milestone_drive_routes import milestone_drive_bp
+#meeting routes
+from app.routes.meet_routes import meet_bp
 
 blueprints = [
     {"blueprint": main_routes.main_bp, "url_prefix": "/"},
@@ -180,7 +166,7 @@ blueprints = [
     {"blueprint": attendance_bp, "url_prefix": "/api/attendance"},
     {"blueprint": alerts_bp, "url_prefix": "/api/erp-alerts"},
     {"blueprint": daily_updates_bp, "url_prefix": "/api/daily-updates"},
-    {"blueprint": analytics_bp, "url_prefix": "/analytics"},
+    #{"blueprint": analytics_bp, "url_prefix": "/analytics"},
     {"blueprint": activity_monitor_bp, "url_prefix": "/api/activity"},
     # SF Drive main
     {"blueprint": drive_bp, "url_prefix": "/api/drive"},
@@ -190,4 +176,11 @@ blueprints = [
     {"blueprint": drive_audit_bp, "url_prefix": "/api/drive/audit"},
     {"blueprint": drive_permission_bp, "url_prefix": "/api/drive/permissions"},
     {"blueprint": milestone_drive_bp, "url_prefix": "/api/milestones"},
+    # Meeting routes
+    {"blueprint": meet_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_milestone_routes.meet_milestone_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_file_routes.meet_files_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_recording_routes.meet_recording_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_guest_routes.meet_guest_bp, "url_prefix": "/api/meet"},
+    {"blueprint": meet_workspace_memory.meet_memory_bp, "url_prefix": "/api/meet"},
 ]

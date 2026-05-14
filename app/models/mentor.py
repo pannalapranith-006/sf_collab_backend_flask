@@ -1,6 +1,5 @@
 """
 Mentorship Models — SF Collab
-==============================
 
 MentorProfile  — extended profile for users who register as mentors
 MentorshipRequest — a founder requesting mentorship for a vision or startup

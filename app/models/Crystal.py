@@ -1,6 +1,5 @@
 """
 Crystal Models — Visibility Acceleration Layer
-================================================
 IMPORTANT PLATFORM RULE:
   Crystals are NOT money. They CANNOT be used for payments.
   Crystals only provide temporary visibility boosts.

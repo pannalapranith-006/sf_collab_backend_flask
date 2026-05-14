@@ -1,6 +1,5 @@
 """
 Crystal Routes — Visibility Acceleration API
-=============================================
 IMPORTANT PLATFORM RULE:
   Crystals CANNOT be used for payments.
   Crystals are ONLY for temporary visibility/discovery acceleration.
