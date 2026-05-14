@@ -1,5 +1,5 @@
 -- Database Schema for SF Collab Backend
--- Updated: January 16, 2026
+-- Updated: May 14, 2026
 -- This file contains the complete database schema and initial data
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -108,6 +108,36 @@ CREATE TABLE join_requests (
     FOREIGN KEY(user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
+-- analytics_events table 
+CREATE TABLE analytics_events (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    event_id VARCHAR(100) NOT NULL,
+    event_name VARCHAR(100) NOT NULL,
+    user_id INTEGER NULL,
+    startup_id INTEGER NULL,
+    workspace_id INTEGER NULL,
+    entity_type VARCHAR(100) NULL,
+    entity_id INTEGER NULL,
+    event_timestamp DATETIME NOT NULL,
+    event_source VARCHAR(100) NOT NULL,
+    event_version VARCHAR(20) DEFAULT 'v1',
+    idempotency_key VARCHAR(255) NULL,
+    metadata JSON NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_analytics_event_id (event_id),
+    UNIQUE KEY uq_analytics_idempotency_key (idempotency_key),
+    INDEX ix_analytics_event_name (event_name),
+    INDEX ix_analytics_user_id (user_id),
+    INDEX ix_analytics_startup_id (startup_id),
+    INDEX ix_analytics_workspace_id (workspace_id),
+    INDEX ix_analytics_event_timestamp (event_timestamp),
+    INDEX ix_analytics_event_name_timestamp (event_name, event_timestamp),
+    INDEX ix_analytics_workspace_event_time (workspace_id, event_name, event_timestamp),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (startup_id) REFERENCES startups(id) ON DELETE SET NULL
+);
+
 -- Indexes for performance
 CREATE INDEX ix_users_email ON users (email);
 CREATE INDEX ix_startups_creator_id ON startups (creator_id);
@@ -133,6 +163,7 @@ INSERT INTO startup_members (startup_id, user_id, first_name, last_name, role) V
 -- - Updated DELETE endpoint to use can_manage_members() for consistent authorization
 -- - Changed join requests default filter to 'all' for better visibility
 -- - Added debug logging to DELETE endpoint for troubleshooting
+-- - Added analytics_events table 
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
