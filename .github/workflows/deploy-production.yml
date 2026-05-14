@@ -1,15 +1,15 @@
 name: Deploy Production
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-    types:
-      - closed
 
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
+    # Only deploy when commit message contains [deploy]
+    if: contains(github.event.head_commit.message, '[deploy]')
+    
     runs-on: ubuntu-latest
 
     environment:
@@ -26,5 +26,14 @@ jobs:
           port: 22
           script: |
             cd /home/ubuntu/sf_collab_backend_flask
+
+            echo "📥 Pulling latest code..."
             git pull origin main
-            docker compose -f docker-compose-prod.yml up -d --build
+
+            echo "🛑 Stopping existing containers..."
+            docker compose -f docker/docker-compose-prod.yml down
+
+            echo "🚀 Starting new containers..."
+            docker compose -f docker/docker-compose-prod.yml up -d --build
+
+            echo "✅ Deployment complete!"

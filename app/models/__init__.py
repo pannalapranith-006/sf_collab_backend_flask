@@ -37,7 +37,6 @@ from .planVersion import PlanVersion
 from .businessPlan import BusinessPlan
 from .planSection import PlanSection
 
-
 from .builder import BuilderProfile, BuilderSkill, BuilderPortfolio, BuilderApplication, SavedStartup, ApplicationStatus
 from .outreach_email_account import OutreachEmailAccount
 from .outreach_campaign import OutreachCampaign
@@ -45,7 +44,6 @@ from .outreach_contact import OutreachContact
 from .outreach_sendjobs import OutreachSendJob
 from .outreach_draft import OutreachDraft
 from .pitch_deck import PitchDeck
-# from .wallet import UserWallet, WalletTransaction, ExchangeRate
 from .UserWallet import UserWallet
 from .WalletTransaction import WalletTransaction
 from .virtual_product import VirtualProduct
@@ -53,15 +51,70 @@ from .product_purchase import ProductPurchase
 from .user_inventory import UserInventory
 from .EventTokenBalance import EventTokenBalance
 from .aiNews import AINewsArticle
+from .vision import Vision
+from .collaboration_request import CollaborationRequest
 from .ideaCollabRequest import IdeaCollabRequest
 from .startup_rating import StartupRating
 from .marketplace_category import MarketplaceCategory
 from .marketplace_listing import MarketplaceListing
 from .marketplace_seller import Seller
+from .workspace import Workspace
+from .workspace_member import WorkspaceMember
+from .attendance import Attendance
+from .holiday import Holiday
+from .daily_update import DailyUpdate
+from .erp_task import ErpTask
+from .erp_document import ErpDocument
+from .erp_alert import ErpAlert
+from .erp_user_activity import ErpUserActivity
 
-# Economy Layer 2: Real-money Balance + Escrow
+# Economy Layer 2
 from .Balance import Balance, BalanceTransaction
 from .EscrowTransaction import EscrowTransaction
 
-# Economy Layer 3: Crystals (visibility acceleration only — NOT money)
+# Economy Layer 3
 from .Crystal import CrystalWallet, CrystalTransaction, VisibilityBoost
+
+from .marketplace_purchase import MarketplacePurchase
+from .mentor import MentorProfile, MentorSession, MentorshipRequest
+
+# ── ERP Module ────────────────────────────────────────────────────────────────
+#SFDrive Folder System
+from .sfdrivefolder import Folder
+from .sfdrive_file import SFFile
+#SFDRIVE tagging system
+from .sfdrive_tag import Tag
+from .marketplace_purchase import MarketplacePurchase
+from .mentor import MentorProfile, MentorSession, MentorshipRequest
+
+#  ERP Module 
+from .attendance import Attendance
+from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
+from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
+from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot
+from .analytics import AnalyticsSnapshot
+from .user import User
+from .workspace_membership import WorkspaceMembership
+from .membership_audit_log import MembershipAuditLog
+from .attendance_log import AttendanceLog
+from .daily_update import DailyUpdate
+from .warning import Warning
+from .erp_task import ErpTask
+from .proof import Proof
+from .execution_point import ExecutionPoint
+from .revenue_pool import RevenuePool
+
+from .erp_activity import UserActivity, ActivityMonitorJobHealth
+from .analytics import AnalyticsSnapshot
+
+#  SF Drive Module 
+from .drive_folder import DriveFolder
+from .drive_file import DriveFile, DriveFileVersion
+from .drive_permission import DriveFilePermission, DriveFileRelation
+#from .analytics import AnalyticsSnapshot
+#from .analytics import AnalyticsSnapshot
+  
+from app.models.drive_file import DriveFile                             
+from app.models.drive_file_relation import DriveFileRelation
+from app.models.drive_audit_log import DriveAuditLog
+from .erp_activity import UserActivity, ActivityMonitorJobHealth, AnalyticsSnapshot

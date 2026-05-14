@@ -1,8 +1,50 @@
+from enum import Enum
+from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime, timedelta
-from sqlalchemy import Enum, JSON
-from app.extensions import db
+from sqlalchemy import JSON
 
+db = SQLAlchemy()
+
+# ========== Enums ==========
+class TaskStatus(str, Enum):
+    TODO = "todo"
+    IN_PROGRESS = "in_progress"
+    DONE = "done"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+class TaskComplexity(str, Enum):
+    SMALL = "small"
+    MEDIUM = "medium"
+    LARGE = "large"
+    CRITICAL = "critical"
+
+class TaskPriority(str, Enum):      # added for clarity
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+class QualityRating(str, Enum):
+    REJECTED = "rejected"
+    ACCEPTED = "accepted"
+    GOOD = "good"
+    EXCELLENT = "excellent"
+
+COMPLEXITY_BASE_POINTS = {
+    TaskComplexity.SMALL: 5,
+    TaskComplexity.MEDIUM: 15,
+    TaskComplexity.LARGE: 35,
+    TaskComplexity.CRITICAL: 60,
+}
+
+QUALITY_MULTIPLIERS = {
+    QualityRating.REJECTED: 0.0,
+    QualityRating.ACCEPTED: 1.0,
+    QualityRating.GOOD: 1.2,
+    QualityRating.EXCELLENT: 1.5,
+}
+
+# ========== Task Model ==========
 class Task(db.Model):
     __tablename__ = 'tasks'
     
@@ -12,11 +54,15 @@ class Task(db.Model):
     
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    priority = db.Column(Enum('low', 'medium', 'high'), default='medium')
-    status = db.Column(Enum('to_do', 'in_progress', 'completed', 'overdue'), default='today')
+    
+    # Use the proper enums
+    priority = db.Column(db.Enum(TaskPriority), default=TaskPriority.MEDIUM)
+    status = db.Column(db.Enum(TaskStatus), default=TaskStatus.TODO)
+    complexity = db.Column(db.Enum(TaskComplexity), nullable=True)   # new field
+    
     visible_by = db.Column(db.String(50), default='all')  # 'public', 'team', 'private'
-    tags = db.Column(JSON, default=[])
-    labels = db.Column(JSON, default=[])
+    tags = db.Column(JSON, default=list)
+    labels = db.Column(JSON, default=list)
     
     due_date = db.Column(db.DateTime, nullable=True)
     completed_date = db.Column(db.DateTime, nullable=True)
@@ -38,71 +84,66 @@ class Task(db.Model):
         back_populates="owned_tasks",
         foreign_keys=[user_id]
     )
-    
     task_creator = db.relationship(
         "User",
         back_populates="created_tasks",
         foreign_keys=[created_by]
     )
-    
     task_assignee = db.relationship(
         "User",
         back_populates="assigned_tasks",
         foreign_keys=[assigned_to]
     )
-    
     parent_startup = db.relationship(
         "Startup",
         back_populates="startup_tasks",
         foreign_keys=[startup_id]
     )
     
-    # HELPER FUNCTIONS
-    def update_status(self, new_status):
-        """Update task status and handle completion"""
+    # ========== Helper Methods ==========
+    def update_status(self, new_status: TaskStatus):
+        """Update task status and handle completion date."""
         self.status = new_status
-        if new_status == 'completed':
+        if new_status == TaskStatus.DONE:
             self.completed_date = datetime.utcnow()
             self.progress_percentage = 100
             self.check_if_on_time()
-        elif new_status == 'in_progress':
+        elif new_status == TaskStatus.IN_PROGRESS and self.progress_percentage == 0:
             self.progress_percentage = 50
         db.session.commit()
     
-    def update_progress(self, percentage):
-        """Update progress percentage"""
+    def update_progress(self, percentage: int):
+        """Update progress percentage (0-100)."""
         self.progress_percentage = max(0, min(100, percentage))
         if percentage >= 100:
-            self.update_status('completed')
-        elif percentage > 0:
-            self.update_status('in_progress')
+            self.update_status(TaskStatus.DONE)
+        elif percentage > 0 and self.status == TaskStatus.TODO:
+            self.update_status(TaskStatus.IN_PROGRESS)
         db.session.commit()
     
     def check_if_on_time(self):
-        """Check if task was completed on time"""
+        """Set is_on_time based on due_date and completion."""
         if self.due_date and self.completed_date:
             self.is_on_time = self.completed_date <= self.due_date
         elif self.due_date and datetime.utcnow() > self.due_date:
             self.is_on_time = False
-            self.status = 'overdue'
+        else:
+            self.is_on_time = True
         db.session.commit()
     
-    def assign_to_user(self, user_id):
-        """Assign task to user"""
+    def assign_to_user(self, user_id: int):
         self.assigned_to = user_id
         db.session.commit()
     
-    def add_tag(self, tag):
-        """Add tag to task"""
-        if not self.tags:
+    def add_tag(self, tag: str):
+        if self.tags is None:
             self.tags = []
         if tag not in self.tags:
             self.tags.append(tag)
         db.session.commit()
     
-    def add_label(self, label, color=None):
-        """Add label to task"""
-        if not self.labels:
+    def add_label(self, label: str, color: str = None):
+        if self.labels is None:
             self.labels = []
         label_data = {'name': label}
         if color:
@@ -110,31 +151,29 @@ class Task(db.Model):
         self.labels.append(label_data)
         db.session.commit()
     
-    def log_time(self, hours):
-        """Log actual hours worked"""
-        if not self.actual_hours:
-            self.actual_hours = 0
+    def log_time(self, hours: float):
+        if self.actual_hours is None:
+            self.actual_hours = 0.0
         self.actual_hours += hours
         db.session.commit()
     
-    def is_overdue(self):
-        """Check if task is overdue"""
-        if self.due_date and self.status != 'completed':
+    def is_overdue(self) -> bool:
+        """Return True if task is not done and due date has passed."""
+        if self.due_date and self.status != TaskStatus.DONE:
             return datetime.utcnow() > self.due_date
         return False
     
-    def _enum_to_value(self,value):
-        return value.value if hasattr(value, "value") else value
-        
     def to_dict(self):
+        """Convert task to dictionary, handling enums and relationships."""
         return {
             'id': self.id,
             'user_id': self.user_id,
             'startup_id': self.startup_id,
             'title': self.title,
             'description': self.description,
-            'priority': self._enum_to_value(self.priority),
-            'status':self._enum_to_value(self.status),
+            'priority': self.priority.value if self.priority else None,
+            'status': self.status.value if self.status else None,
+            'complexity': self.complexity.value if self.complexity else None,
             'tags': self.tags or [],
             'labels': self.labels or [],
             'due_date': self.due_date.isoformat() if self.due_date else None,

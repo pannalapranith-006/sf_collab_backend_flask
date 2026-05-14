@@ -85,5 +85,4 @@ test staging
 docker-compose -f docker-compose-dev.yml down
 ```
 
-trigger staging deploy
-
+fix deploy

@@ -132,7 +132,17 @@ def approve_join_request(request_id):
     
     try:
         member = join_request.approve()
-        
+
+        # ── If this join request is for an idea (vision), recalculate readiness
+        try:
+            from app.models.idea import Idea
+            if hasattr(join_request, 'idea_id') and join_request.idea_id:
+                idea = Idea.query.get(join_request.idea_id)
+                if idea:
+                    idea.compute_readiness_score()
+        except Exception as e:
+            print(f"⚠️ Readiness recalculation on join approval failed: {e}")
+
         return success_response({
             'join_request': join_request.to_dict(),
             'new_member': member.to_dict() if hasattr(member, 'to_dict') else {
