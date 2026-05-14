@@ -1,8 +1,8 @@
-from flask import Flask, request, abort, g, send_from_directory, make_response, session
-from flask import Flask, request, abort, g, send_from_directory, session
+from flask import Flask, app, request, abort, request, g, send_from_directory, make_response, session
 from flask_cors import CORS
 from .extensions import db, migrate, jwt, sess, limiter
 from app.config import Config
+from flask_migrate import Migrate
 from app.routes import auth_routes
 from .config import get_config
 import os
@@ -18,12 +18,10 @@ from app.services.email_service import EmailService
 from flask_session import Session
 import stripe
 from app.services.ai_news.scheduler import start_scheduler
-#from app.routes.analytics import analytics_bp
-# FIX: removed — feedparser not installed, ai_news disabled
-# from app.services.ai_news.scheduler import start_scheduler
-# FIX: removed — app.routes.analytics does not exist; analytics_bp is
-#      already registered via the blueprints list in blueprints.py
-# from app.routes.analytics import analytics_bp
+from app.models.workspace import Workspace
+from app.models.workspace_member import WorkspaceMember    
+from app.routes.mvp_workspace_routes import mvp_workspace_bp  
+
 
 WEBHOOK_SECRET = b'sFcollab_2025_secretKey!'
 
@@ -38,7 +36,7 @@ AVATAR_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'chat_avatars')
 def get_email_service():
     return EmailService()
 
-
+                                                    
 # ─────────────────────────────────────────────────────────────────────────────
 # STARTUP MIGRATIONS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -443,6 +441,18 @@ Response: {response_preview}
         print(event, payload)
         return '', 200    
     return app
-        return '', 200
 
-    return app  # FIX: removed duplicate `return app` that followed this line
+def create_app():
+
+    app = Flask(__name__)
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+        "DATABASE_URL",
+        "mysql+pymysql://sfcollab:sfcollab_pass@db:3306/defaultdb"
+    )
+
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    db.init_app(app)
+
+    return app

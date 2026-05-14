@@ -1,3 +1,4 @@
+from app.routes.workspace_routes import workspace_bp
 from .routes import (
     main_routes, auth_routes, user_routes, profile_routes,
     idea_routes, knowledge_routes, startup_routes, project_goal_routes,
@@ -270,6 +271,7 @@ blueprints = [
 # { "blueprint": ai_news_routes.ai_news_bp, "url_prefix": '/api'},
 { "blueprint": readiness_routes.readiness_bp, "url_prefix": '/api/readiness' },
 { "blueprint": balance_routes.balance_bp, "url_prefix": '/api/balance' },
+{ "blueprint": workspace_bp, "url_prefix": "/api/workspaces" }, # workspace
 { "blueprint": crystal_routes.crystals_bp, "url_prefix": '/api/crystals' },
 { "blueprint": sfdrivefolder_routes.folder_bp,"url_prefix":'/api/sfdrive/folders'},
 { "blueprint": sfdrivetag_routes.tag_bp,"url_prefix":'/api/sfdrive/tags'},
