@@ -6,6 +6,7 @@ WORKDIR /app
 # SYSTEM DEPENDENCIES
 # =====================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \  
     libcairo2 \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \

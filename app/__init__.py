@@ -1,7 +1,8 @@
-from flask import Flask, request, abort, request, g, send_from_directory, make_response, session
+from flask import Flask, app, request, abort, request, g, send_from_directory, make_response, session
 from flask_cors import CORS
 from .extensions import db, migrate, jwt, sess, limiter
 from app.config import Config
+from flask_migrate import Migrate
 from app.routes import auth_routes
 from .config import get_config
 import os
@@ -19,7 +20,8 @@ from flask_session import Session
 import stripe
 from app.services.ai_news.scheduler import start_scheduler
 from app.models.workspace import Workspace
-from app.models.workspace_member import WorkspaceMember      
+from app.models.workspace_member import WorkspaceMember    
+from app.routes.mvp_workspace_routes import mvp_workspace_bp  
 
 
 WEBHOOK_SECRET = b'sFcollab_2025_secretKey!'
@@ -35,7 +37,7 @@ AVATAR_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'chat_avatars')
 def get_email_service():
     return EmailService()
 
-
+                                                    
 # ─────────────────────────────────────────────────────────────────────────────
 # STARTUP MIGRATIONS
 # Safely adds missing columns every time Flask starts.
@@ -413,5 +415,22 @@ def create_app(config_name=None):
     
         print(event, payload)
         return '', 200
+
+    return app
+
+
+
+def create_app():
+
+    app = Flask(__name__)
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+        "DATABASE_URL",
+        "mysql+pymysql://sfcollab:sfcollab_pass@db:3306/defaultdb"
+    )
+
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    db.init_app(app)
 
     return app

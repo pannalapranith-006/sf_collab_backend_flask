@@ -1,10 +1,10 @@
-from flask import request, g, has_request_context
+from functools import wraps
+from flask import request
 from flask_jwt_extended import get_jwt_identity
 from app.models.user import User
 
+
 def get_current_workspace_id():
-    if not has_request_context():
-        return None
 
     workspace_id = request.headers.get("X-Workspace-Id")
 
@@ -16,3 +16,20 @@ def get_current_workspace_id():
 
     return user.active_workspace_id if user else None
 
+
+def require_workspace_member(f):
+
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return decorator
+
+
+def require_workspace_admin(f):
+
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return decorator

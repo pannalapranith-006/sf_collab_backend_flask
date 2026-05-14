@@ -27,7 +27,8 @@ print("=" * 60)
 # =====================================================
 # CREATE APP
 # =====================================================
-app = create_app(ENV)
+#app = create_app(ENV)
+app = create_app()
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 print("DB URI:", app.config["SQLALCHEMY_DATABASE_URI"])
