@@ -75,9 +75,8 @@ from .mentor import MentorProfile, MentorSession, MentorshipRequest
 from .attendance import Attendance
 from .alert import Alert, AlertType, AlertPriority, WorkspaceAlertConfig
 from .erp_support import DailyUpdate, Holiday, UserUpdateStreak
-from .analytics import AnalyticsSnapshot
 from .erp_activity import UserActivity, ActivityMonitorJobHealth
-#from .analytics import AnalyticsSnapshot
+from .analytics import AnalyticsSnapshot
 
 #  SF Drive Module 
 # ... existing imports ...
