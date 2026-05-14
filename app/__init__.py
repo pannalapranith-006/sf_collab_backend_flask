@@ -1,4 +1,4 @@
-from flask import Flask, request, abort, g, send_from_directory, make_response
+from flask import Flask, request, abort, g, send_from_directory
 from flask_cors import CORS
 from .extensions import db, migrate, jwt, sess, limiter
 from app.config import Config
@@ -36,44 +36,49 @@ def get_email_service():
 # ─────────────────────────────────────────────────────────────────────────────
 SCHEMA_MIGRATIONS = [
     # knowledge table
-    ("knowledge", "file_size_mb", "FLOAT"),
-    ("knowledge", "image_buffer", "BLOB"),
-    ("knowledge", "image_content_type", "VARCHAR(100)"),
+    ("knowledge", "file_size_mb",            "FLOAT"),
+    ("knowledge", "image_buffer",            "BLOB"),
+    ("knowledge", "image_content_type",      "VARCHAR(100)"),
 
-    # startups table — lifecycle & execution
-    ("startups", "lifecycle_state", "VARCHAR(50) DEFAULT 'active'"),
-    ("startups", "execution_score", "FLOAT DEFAULT 0.0"),
-    ("startups", "milestones_completed", "INTEGER DEFAULT 0"),
-    ("startups", "milestones_total", "INTEGER DEFAULT 0"),
-    ("startups", "last_activity_at", "TIMESTAMP"),
-    ("startups", "activity_score", "FLOAT DEFAULT 0.0"),
-    ("startups", "crowdfunding_unlocked", "BOOLEAN DEFAULT 0"),
-    ("startups", "crowdfunding_unlocked_at", "TIMESTAMP"),
+    # startups table
+    ("startups",  "lifecycle_state",         "VARCHAR(50) DEFAULT 'active'"),
+    ("startups",  "execution_score",         "FLOAT DEFAULT 0.0"),
+    ("startups",  "milestones_completed",    "INTEGER DEFAULT 0"),
+    ("startups",  "milestones_total",        "INTEGER DEFAULT 0"),
+    ("startups",  "last_activity_at",        "TIMESTAMP"),
+    ("startups",  "activity_score",          "FLOAT DEFAULT 0.0"),
+    ("startups",  "crowdfunding_unlocked",   "BOOLEAN DEFAULT 0"),
+    ("startups",  "crowdfunding_unlocked_at","TIMESTAMP"),
 
-    # ideas table — vision system
-    ("ideas", "vision_state", "VARCHAR(50) DEFAULT 'public'"),
-    ("ideas", "readiness_score", "FLOAT DEFAULT 0.0"),
-    ("ideas", "readiness_breakdown", "JSON"),
-    ("ideas", "problem_statement", "TEXT"),
-    ("ideas", "outcome_goal", "TEXT"),
-    ("ideas", "risk_level", "VARCHAR(20) DEFAULT 'medium'"),
-    ("ideas", "required_roles", "JSON"),
-    ("ideas", "roadmap_items", "JSON"),
+    # ideas table
+    ("ideas", "vision_state",            "VARCHAR(50) DEFAULT 'public'"),
+    ("ideas", "readiness_score",         "FLOAT DEFAULT 0.0"),
+    ("ideas", "readiness_breakdown",     "JSON"),
+    ("ideas", "problem_statement",       "TEXT"),
+    ("ideas", "outcome_goal",            "TEXT"),
+    ("ideas", "risk_level",              "VARCHAR(20) DEFAULT 'medium'"),
+    ("ideas", "required_roles",          "JSON"),
+    ("ideas", "roadmap_items",           "JSON"),
+    ("ideas", "activated_as_startup_id", "INTEGER"),
 
     # users table
-    ("users", "last_seen", "DATETIME"),
-    ("users", "last_login_ip", "VARCHAR(45)"),
-    ("users", "total_revenue", "FLOAT DEFAULT 0.0"),
-    ("users", "reputation_score", "FLOAT DEFAULT 0.0"),
-    ("users", "storage_used_mb", "FLOAT DEFAULT 0.0"),
-    ("users", "stripe_connect_account_id", "VARCHAR(255)"),
-    ("users", "milestones_completed", "INTEGER DEFAULT 0"),
-    ("users", "milestones_on_time", "INTEGER DEFAULT 0"),
-    ("users", "tasks_completed", "INTEGER DEFAULT 0"),
-    ("users", "tasks_on_time", "INTEGER DEFAULT 0"),
-    ("users", "collaborations_count", "INTEGER DEFAULT 0"),
-
-    ("ideas", "activated_as_startup_id", "INTEGER"),
+    ("users", "last_seen",                    "DATETIME"),
+    ("users", "last_login_ip",                "VARCHAR(45)"),
+    ("users", "total_revenue",                "FLOAT DEFAULT 0.0"),
+    ("users", "reputation_score",             "FLOAT DEFAULT 0.0"),
+    ("users", "storage_used_mb",              "FLOAT DEFAULT 0.0"),
+    ("users", "stripe_connect_account_id",    "VARCHAR(255)"),
+    ("users", "milestones_completed",         "INTEGER DEFAULT 0"),
+    ("users", "milestones_on_time",           "INTEGER DEFAULT 0"),
+    ("users", "tasks_completed",              "INTEGER DEFAULT 0"),
+    ("users", "tasks_on_time",                "INTEGER DEFAULT 0"),
+    ("users", "collaborations_count",         "INTEGER DEFAULT 0"),
+    ("users", "verification_code",            "VARCHAR(10)"),
+    ("users", "verification_code_expires_at", "DATETIME"),
+    ("users", "is_verified",                  "BOOLEAN DEFAULT 0"),
+    ("users", "is_admin",                     "BOOLEAN DEFAULT 0"),
+    ("users", "satisfaction_percentage",      "FLOAT DEFAULT 0.0"),
+    ("users", "active_startups_count",        "INTEGER DEFAULT 0"),
 ]
 
 
@@ -82,8 +87,8 @@ def _run_startup_migrations(app):
     from sqlalchemy import text, inspect as sa_inspect
 
     with app.app_context():
-        added = []
-        errors = []
+        added        = []
+        errors       = []
         column_cache = {}
 
         for table, column, col_def in SCHEMA_MIGRATIONS:
@@ -116,6 +121,8 @@ def _run_startup_migrations(app):
         if errors:
             for err in errors:
                 print(f"⚠  Migration error: {err}")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -127,30 +134,32 @@ def create_app(config_name=None):
     app.config.from_object(config_class)
     app.config.from_pyfile('config.py', silent=True)
 
-    # JWT Configuration
-    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY") or app.config.get("SECRET_KEY")
-    app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
-    app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=15)
+    # ── JWT ──────────────────────────────────────────────────────────────────
+    app.config["JWT_SECRET_KEY"]          = os.getenv("JWT_SECRET_KEY") or app.config.get("SECRET_KEY")
+    app.config["JWT_TOKEN_LOCATION"]      = ["headers", "cookies"]
+    app.config["JWT_ACCESS_COOKIE_PATH"]  = "/"
+    app.config["JWT_REFRESH_COOKIE_PATH"] = "/api/auth/refresh"
+    app.config["JWT_ACCESS_TOKEN_EXPIRES"]  = timedelta(minutes=15)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
 
     is_production = os.getenv("FLASK_ENV") == "production"
     if is_production:
-        app.config["JWT_COOKIE_SECURE"] = True
-        app.config["JWT_COOKIE_SAMESITE"] = "None"
+        app.config["JWT_COOKIE_SECURE"]       = True
+        app.config["JWT_COOKIE_SAMESITE"]     = "None"
         app.config["JWT_COOKIE_CSRF_PROTECT"] = True
         app.config["JWT_COOKIE_DOMAIN"] = ".sfcollab.com"
     else:
-        app.config["JWT_COOKIE_SECURE"] = False
-        app.config["JWT_COOKIE_SAMESITE"] = "Lax"
+        app.config["JWT_COOKIE_SECURE"]       = False
+        app.config["JWT_COOKIE_SAMESITE"]     = "Lax"
         app.config["JWT_COOKIE_CSRF_PROTECT"] = False
         app.config["JWT_COOKIE_DOMAIN"] = None
 
-    # Session configuration
-    app.config['SESSION_PERMANENT'] = True
-    app.config['SESSION_USE_SIGNER'] = True
+    # ── Session ──────────────────────────────────────────────────────────────
+    app.config['SESSION_PERMANENT']       = True
+    app.config['SESSION_USE_SIGNER']      = True
     app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_PATH'] = '/'
-    app.config['SESSION_KEY_PREFIX'] = 'flask_session:'
+    app.config['SESSION_COOKIE_PATH']     = '/'
+    app.config['SESSION_KEY_PREFIX']      = 'flask_session:'
 
     if is_production:
         app.config["SESSION_COOKIE_SAMESITE"] = "None"
@@ -159,55 +168,67 @@ def create_app(config_name=None):
         app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
         app.config["SESSION_COOKIE_SECURE"] = False
 
-    app.config.setdefault("GITHUB_CLIENT_ID", os.getenv("GITHUB_CLIENT_ID"))
+    app.config.setdefault("GITHUB_CLIENT_ID",     os.getenv("GITHUB_CLIENT_ID"))
     app.config.setdefault("GITHUB_CLIENT_SECRET", os.getenv("GITHUB_CLIENT_SECRET"))
 
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-    # AWS S3
-    app.config["AWS_ACCESS_KEY_ID"] = os.getenv("AWS_ACCESS_KEY_ID")
+    # ── AWS ──────────────────────────────────────────────────────────────────
+    app.config["AWS_ACCESS_KEY_ID"]     = os.getenv("AWS_ACCESS_KEY_ID")
     app.config["AWS_SECRET_ACCESS_KEY"] = os.getenv("AWS_SECRET_ACCESS_KEY")
-    app.config["AWS_REGION"] = os.getenv("AWS_REGION", "us-east-1")
-    app.config["AWS_S3_BUCKET"] = os.getenv("AWS_S3_BUCKET")
-    app.config["BACKEND_URL"] = Config.BACKEND_URL
+    app.config["AWS_REGION"]            = os.getenv("AWS_REGION", "us-east-1")
+    app.config["AWS_S3_BUCKET"]         = os.getenv("AWS_S3_BUCKET")
+    app.config["BACKEND_URL"]           = Config.BACKEND_URL
 
-    # Email
-    app.config['SMTP_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.example.com')
-    app.config['SMTP_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'true').lower() in ['true', '1', 't']
-    app.config['SMTP_PORT'] = int(os.getenv('MAIL_PORT', 587))
-    app.config['SMTP_USERNAME'] = os.getenv('MAIL_USERNAME', 'your_username')
-    app.config['SMTP_PASSWORD'] = os.getenv('MAIL_PASSWORD', 'your_password')
+    # ── Email ─────────────────────────────────────────────────────────────────
+    app.config['SMTP_SERVER']         = os.getenv('MAIL_SERVER', 'smtp.example.com')
+    app.config['SMTP_USE_TLS']        = os.getenv('MAIL_USE_TLS', 'true').lower() in ['true', '1', 't']
+    app.config['SMTP_PORT']           = int(os.getenv('MAIL_PORT', 587))
+    app.config['SMTP_USERNAME']       = os.getenv('MAIL_USERNAME', 'your_username')
+    app.config['SMTP_PASSWORD']       = os.getenv('MAIL_PASSWORD', 'your_password')
     app.config['SMTP_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', 'your_default_sender')
 
-    # AI services
-    app.config['OPENAI_API_KEY'] = os.getenv('OPENAI_API_KEY', '')
-    app.config['GROQ_API_KEY'] = os.getenv('GROQ_API_KEY', '')
+    # ── AI / proxy services ───────────────────────────────────────────────────
+    app.config['OPENAI_API_KEY']      = os.getenv('OPENAI_API_KEY', '')
+    app.config['GROQ_API_KEY']        = os.getenv('GROQ_API_KEY', '')
     app.config['HUGGINGFACE_API_KEY'] = os.getenv('HUGGINGFACE_API_KEY', '')
     app.config['CORS_ORIGINS'] = Config.CORS_ORIGINS
     app.config['HF_PROXY_URL'] = os.getenv("HF_PROXY_URL")
     app.config['HF_PROXY_KEY'] = os.getenv("HF_PROXY_KEY")
 
-    # Stripe
-    stripe.api_key = os.getenv('STRIPE_SECRET_KEY', '')
-    app.config['STRIPE_SECRET_KEY'] = os.getenv('STRIPE_SECRET_KEY', '')
+    # ── Stripe ───────────────────────────────────────────────────────────────
+    stripe.api_key                      = os.getenv('STRIPE_SECRET_KEY', '')
+    app.config['STRIPE_SECRET_KEY']     = os.getenv('STRIPE_SECRET_KEY', '')
     app.config['STRIPE_WEBHOOK_SECRET'] = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 
-    # CORS
-    allowed_origins = [
+    # ── CORS ─────────────────────────────────────────────────────────────────
+    allowed_origins = app.config.get('CORS_ORIGINS', [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "https://staging.sfcollab.com",
         "https://sfcollab.com",
-        "https://sfclb.netlify.app"
-    ]
+        "https://sfclb.netlify.app",
+    ])
     print(f"🚀 CORS ACTIVE FOR: {allowed_origins}")
 
-    CORS(app,
-         resources={r"/*": {"origins": allowed_origins}},
-         supports_credentials=True,
-         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
-         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
+    CORS(
+        app,
+        resources={r"/*": {"origins": allowed_origins}},
+        supports_credentials=True,
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "X-CSRF-TOKEN"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    )
+
+    # ── Request timer ────────────────────────────────────────────────────────
+    @app.before_request
+    def start_request_timer():
+        g.start_time = time.time()
+
+    # ── OPTIONS preflight ────────────────────────────────────────────────────
+    @app.route('/<path:path>', methods=['OPTIONS'])
+    def options_handler(path):
+        return '', 200
 
     # ─── Before request: start timer ─────────────────────────────────────────
     @app.before_request
@@ -217,31 +238,26 @@ def create_app(config_name=None):
     # ─── After request: CORS headers + logging ──────────────────────────────
     @app.after_request
     def after_request_handler(response):
-        # CORS headers (dynamic origin check)
+        # Dynamic CORS origin check
         request_origin = request.headers.get("Origin")
         if request_origin and request_origin in allowed_origins:
             response.headers["Access-Control-Allow-Origin"] = request_origin
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"]     = "Content-Type, Authorization, X-Requested-With"
+        response.headers["Access-Control-Allow-Methods"]     = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Credentials"] = "true"
 
         # Request logging (skip noise)
         if request.path not in ("/favicon.ico", "/health") and request.method != "OPTIONS":
-            duration = round(time.time() - g.start_time, 4) if hasattr(g, 'start_time') else 0
-            method = request.method
-            path = request.path
-            status = response.status_code
-            ip = request.headers.get("X-Forwarded-For", request.remote_addr)
-            origin = request_origin
-            has_auth = "Authorization" in request.headers
-            has_cookie = bool(request.headers.get("Cookie"))
+            duration       = round(time.time() - g.start_time, 4) if hasattr(g, 'start_time') else 0
+            status         = response.status_code
+            ip             = request.headers.get("X-Forwarded-For", request.remote_addr)
+            has_auth       = "Authorization" in request.headers
+            has_cookie     = bool(request.headers.get("Cookie"))
             content_length = request.content_length or 0
 
-            response_preview = ""
             if response.is_json:
                 try:
-                    data = response.get_json()
-                    response_preview = json.dumps(data)[:1000]
+                    response_preview = json.dumps(response.get_json())[:1000]
                 except Exception:
                     response_preview = "<invalid json>"
             else:
@@ -259,14 +275,15 @@ def create_app(config_name=None):
     def options_handler(path):
         return '', 200
 
-    # Initialize extensions
+
+    # ── Extensions ───────────────────────────────────────────────────────────
     db.init_app(app)
     from app import models  # ensure models loaded for migration
     migrate.init_app(app, db)
     jwt.init_app(app)
     limiter.init_app(app)
 
-    # Session backend (filesystem or sqlalchemy)
+    # Session backend
     if app.config.get("SESSION_TYPE") == "filesystem":
         app.config["SESSION_FILE_DIR"] = os.path.join(BASE_DIR, "flask_session")
         os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
@@ -307,26 +324,21 @@ def create_app(config_name=None):
     for blueprint in blueprints:
         app.register_blueprint(blueprint["blueprint"], url_prefix=blueprint["url_prefix"])
 
-    # AI news scheduler (commented as in original)
-    # print("Starting AI news scheduler...")
+    # AI news scheduler disabled — pip install feedparser to re-enable
     # start_scheduler(app)
-    # print("✓ Scheduler started")
 
-    # Static file serving for uploads
     @app.route('/uploads/<path:filename>')
     def uploaded_file(filename):
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-    # Health check
     @app.route('/health')
     def health():
         return {'status': 'healthy', 'database': 'connected'}
 
-    # Error handlers
     @app.errorhandler(404)
     def not_found(e):
         if request.path.startswith("/socket.io"):
-            return e  # let Socket.IO handle it
+            return e
         return {"success": False, "error": "Resource not found"}, 404
 
     @app.errorhandler(500)
@@ -337,20 +349,16 @@ def create_app(config_name=None):
         traceback.print_exc()
         return {"success": False, "error": str(error)}, 500
 
-    # GitHub webhook
     @app.route('/api/webhook/github', methods=['POST'])
     def github_webhook():
         signature = request.headers.get('X-Hub-Signature-256')
         if not signature:
             abort(400, "No signature provided")
-
         sha_name, signature = signature.split('=')
         mac = hmac.new(os.getenv('WEBHOOK', b''), msg=request.data, digestmod=hashlib.sha256)
-
         if not hmac.compare_digest(mac.hexdigest(), signature):
             abort(403, "Invalid signature")
-
-        event = request.headers.get('X-GitHub-Event')
+        event   = request.headers.get('X-GitHub-Event')
         payload = request.json
         print(event, payload)
         return '', 200
