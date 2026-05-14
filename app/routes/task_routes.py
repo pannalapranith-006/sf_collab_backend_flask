@@ -6,12 +6,26 @@ POST /api/workspaces/<workspace_id>/tasks/<task_id>/reject
 """
 import logging
 
-from flask import Blueprint, request, jsonify, g
-
-from app.services.task_approval_service import (
-    approve_task,
-    reject_task,
-    MAX_REJECTION_REASON_LENGTH,
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from datetime import datetime, timedelta
+from app.models.task import Task
+from app.models.erp_task import ErpTask
+from app.models.user import User
+from app.models.startUpMember import StartupMember
+from app.services.achievement_service import AchievementService
+from app.extensions import db
+from app.utils.helper import error_response, success_response, paginate
+from app.utils.plans_utils import can_create_task_or_milestone
+from app.utils.workspace_permissions import get_workspace_membership, is_global_admin
+# ===== NOTIFICATION IMPORTS =====
+from app.notifications.helpers import (
+    notify_task_assigned,
+    notify_task_updated,
+    notify_task_completed,
+    notify_task_overdue,
+    notify_task_reassigned,
+    notify_task_deadline_approaching
 )
 
 logger = logging.getLogger(__name__)
@@ -109,6 +123,85 @@ def approve(workspace_id, task_id):
     if not quality_rating:
         return jsonify({"error": "quality_rating is required"}), 400
 
+        # Notify the task creator that someone claimed it (only if different person)
+        try:
+            if task.user_id and task.user_id != current_user_id:
+                claimer_name = get_user_full_name(current_user_id)
+                notify_task_assigned(
+                    user_id=task.user_id,
+                    assigner_id=current_user_id,
+                    assigner_name=claimer_name,
+                    task_title=task.title,
+                    task_id=task.id
+                )
+        except Exception as e:
+            print(f"Claim task notification failed: {e}")
+
+        try:
+            task_dict = task.to_dict()
+        except Exception as e:
+            print(f"task.to_dict() failed: {e}")
+            task_dict = {
+                'id': task.id,
+                'title': task.title,
+                'assigned_to': task.assigned_to,
+                'status': task.status,
+            }
+
+        return success_response({'task': task_dict}, 'Task claimed successfully')
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f'Failed to claim task: {str(e)}', 500)
+
+@tasks_bp.route('/<int:task_id>', methods=['DELETE'])
+@jwt_required()
+def delete_task(task_id):
+    """Delete task"""
+    current_user_id = int(get_jwt_identity())
+
+    workspace_id_raw = request.args.get('workspace_id')
+    if workspace_id_raw is not None:
+        try:
+            workspace_id = int(workspace_id_raw)
+        except (TypeError, ValueError):
+            return error_response('workspace_id must be an integer', 400)
+
+        erp_task = ErpTask.query.filter_by(id=task_id, workspace_id=workspace_id).first()
+        if not erp_task:
+            return error_response('ERP task not found', 404)
+
+        current_user = User.query.get(current_user_id)
+        if not current_user:
+            return error_response('User not found', 404)
+
+        membership = get_workspace_membership(workspace_id, current_user_id)
+        member_role = membership.role.value if (membership and hasattr(membership.role, 'value')) else (membership.role if membership else None)
+
+        can_delete_erp = (
+            erp_task.created_by == current_user_id
+            or member_role == 'admin'
+            or is_global_admin(current_user)
+        )
+        if not can_delete_erp:
+            return error_response('Unauthorized to delete this ERP task', 403)
+
+        try:
+            db.session.delete(erp_task)
+            db.session.commit()
+            return success_response(message='ERP task deleted successfully')
+        except Exception as e:
+            db.session.rollback()
+            return error_response(f'Failed to delete ERP task: {str(e)}', 500)
+    
+    task = Task.query.get(task_id)
+    if not task:
+        return error_response('Task not found', 404)
+    
+    if task.user_id != current_user_id:
+        current_user = User.query.get(current_user_id)
+        if not current_user.is_admin():
+            return error_response('Unauthorized to delete this task', 403)
+    
     try:
         task = _get_task(workspace_id, task_id)
         membership = _get_membership(workspace_id)

@@ -58,6 +58,15 @@ from .startup_rating import StartupRating
 from .marketplace_category import MarketplaceCategory
 from .marketplace_listing import MarketplaceListing
 from .marketplace_seller import Seller
+from .workspace import Workspace
+from .workspace_member import WorkspaceMember
+from .attendance import Attendance
+from .holiday import Holiday
+from .daily_update import DailyUpdate
+from .erp_task import ErpTask
+from .erp_document import ErpDocument
+from .erp_alert import ErpAlert
+from .erp_user_activity import ErpUserActivity
 
 # Economy Layer 2
 from .Balance import Balance, BalanceTransaction
